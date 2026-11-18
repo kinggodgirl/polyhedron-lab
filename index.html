@@ -1,0 +1,1295 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>입체도형 탐구</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 학생이 패드에서 혼자 쓰는 연습 도구: 위에 지금 할 일 한 문장, 가운데 손으로 돌리는 큰 도형, 아래 큰 단추. */
+:root {
+  --bg: #f3f6fb; --panel: #ffffff; --fg: #1c2733; --muted: #62707f; --line: #d5dde8;
+  --face: #e8590c; --edge: #1c7ed6; --vertex: #7048e8; --ok: #2b8a3e; --ok-bg: #e6f4ea;
+  --solid: #dfe7f1; --solid-back: #eef2f7; --btn-fg: #ffffff;
+  --display: "Jua", "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  --body: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141a22; --panel: #1e2630; --fg: #eef2f6; --muted: #9fb0c0; --line: #36414e;
+    --face: #ff922b; --edge: #74c0fc; --vertex: #b197fc; --ok: #8ce99a; --ok-bg: #1f3a28;
+    --solid: #33404e; --solid-back: #28323d; --btn-fg: #141a22; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141a22; --panel: #1e2630; --fg: #eef2f6; --muted: #9fb0c0; --line: #36414e;
+  --face: #ff922b; --edge: #74c0fc; --vertex: #b197fc; --ok: #8ce99a; --ok-bg: #1f3a28;
+  --solid: #33404e; --solid-back: #28323d; --btn-fg: #141a22; color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body);
+  display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; min-height: 460px;
+  padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  -webkit-user-select: none; user-select: none;
+}
+#top { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
+#progress { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#task { font-family: var(--display); font-size: clamp(20px, 3.4vw, 34px); margin: 0; font-weight: 400; flex: 1 1 260px; min-width: 0; text-wrap: balance; }
+#task b { font-weight: 400; }
+.c-face { color: var(--face); } .c-edge { color: var(--edge); } .c-vertex { color: var(--vertex); }
+#stage { flex: 1 1 auto; min-height: 240px; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; touch-action: none; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#hint { position: absolute; left: 0; right: 0; top: 8px; text-align: center; font-size: clamp(13px, 1.7vw, 17px); color: var(--muted); pointer-events: none; padding: 0 12px; }
+#count { position: absolute; right: 14px; bottom: 10px; font-family: var(--display); font-size: clamp(26px, 5vw, 46px); pointer-events: none; font-variant-numeric: tabular-nums; }
+#msg { min-height: 1.6em; font-size: clamp(15px, 2vw, 20px); font-weight: 500; }
+#msg.good { color: var(--ok); }
+#bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+button {
+  font-family: var(--display); font-size: clamp(18px, 2.6vw, 26px); border-radius: 12px; cursor: pointer;
+  border: 2px solid var(--line); background: var(--panel); color: var(--fg); padding: 10px 22px; min-height: 52px;
+}
+button:focus-visible { outline: 3px solid var(--edge); outline-offset: 2px; }
+button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+button.pick { flex: 1 1 120px; }
+button.pick.sel { background: var(--edge); color: var(--btn-fg); border-color: var(--edge); }
+button.pick.wrong { opacity: .35; text-decoration: line-through; }
+button:disabled { opacity: .4; cursor: default; }
+#choices { display: flex; flex-direction: column; gap: 8px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row .lab { flex: 0 0 auto; font-size: 14px; color: var(--muted); min-width: 4.5em; }
+
+/* 결과 화면 */
+#result { display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+#result h2 { font-family: var(--display); font-weight: 400; font-size: clamp(22px, 3.4vw, 34px); margin: 0; }
+#result p { margin: 0; font-size: clamp(14px, 1.9vw, 18px); color: var(--muted); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 420px; background: var(--panel); font-size: clamp(14px, 1.9vw, 19px); }
+th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: center; font-variant-numeric: tabular-nums; }
+th { font-weight: 500; color: var(--muted); } td:first-child, th:first-child { text-align: left; }
+td .miss { display: block; font-size: .72em; color: var(--face); }
+#errors { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: clamp(14px, 1.8vw, 18px); }
+#errors ul { margin: 6px 0 0; padding-left: 1.2em; } #errors li { margin: 2px 0; }
+#errors.clean { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+
+/* 활동 1: 다면체일까, 아닐까? */
+:root { --poly3d: 150,186,224; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --poly3d: 86,120,160; } }
+:root[data-theme="dark"] { --poly3d: 86,120,160; }
+#acts { display: flex; gap: 6px; flex-wrap: wrap; }
+#acts .tab { font-family: var(--body); font-size: 14px; font-weight: 500; min-height: 34px; padding: 4px 14px; border-radius: 999px; border-width: 1px; }
+#acts .tab.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+#act1 { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; }
+#a1top { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
+#a1task { font-family: var(--display); font-size: clamp(20px, 3.4vw, 34px); margin: 0; font-weight: 400; flex: 1 1 260px; min-width: 0; text-wrap: balance; }
+#a1prog { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#a1board { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; min-height: 300px; }
+@media (max-width: 560px) { #a1board { grid-template-columns: 1fr; } }
+.grp { background: var(--panel); border: 2px solid var(--line); border-radius: 16px; padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.grp.yes { border-color: var(--ok); } .grp.no { border-color: var(--face); }
+.grp h2 { font-family: var(--display); font-weight: 400; font-size: clamp(18px, 2.6vw, 26px); margin: 0; text-align: center; }
+.grp.yes h2 { color: var(--ok); } .grp.no h2 { color: var(--face); }
+.tiles { flex: 1 1 auto; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 6px; min-height: 0; }
+.tile { position: relative; min-height: 120px; border-radius: 10px; background: var(--bg); overflow: hidden; }
+.tile canvas { position: absolute; left: 0; top: 0; width: 100%; height: calc(100% - 28px); }
+.tile span { position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font-size: clamp(13px, 1.8vw, 17px); font-weight: 500; }
+#a1stage { flex: 1 1 auto; min-height: 240px; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; touch-action: none; }
+#a1stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#a1hint { position: absolute; left: 0; right: 0; top: 8px; text-align: center; font-size: clamp(13px, 1.7vw, 17px); color: var(--muted); pointer-events: none; padding: 0 12px; }
+#a1stamp { position: absolute; left: 12px; bottom: 12px; font-family: var(--display); font-size: clamp(20px, 3.6vw, 34px); padding: 2px 14px; border-radius: 12px; border: 3px solid; pointer-events: none; }
+#a1stamp.yes { color: var(--ok); border-color: var(--ok); background: var(--ok-bg); }
+#a1stamp.no { color: var(--face); border-color: var(--face); background: var(--panel); }
+#a1name { position: absolute; right: 14px; bottom: 14px; font-family: var(--display); font-size: clamp(20px, 3.6vw, 34px); pointer-events: none; }
+#a1def { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 14px; font-family: var(--display); font-size: clamp(18px, 2.8vw, 28px); line-height: 1.8; text-align: center; }
+#a1def.big { font-size: clamp(24px, 4.4vw, 44px); padding: 24px 16px; flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+.chipw { display: inline-flex; flex-direction: column; align-items: center; vertical-align: top; margin: 0 2px; }
+.chip { padding: 0 .4em; border-radius: 10px; border: 2px dashed var(--line); color: var(--muted); }
+.chip.on { border-style: solid; color: var(--btn-fg); }
+.chip.on.poly { background: var(--face); border-color: var(--face); }
+.chip.on.closed { background: var(--edge); border-color: var(--edge); }
+.chip.on.solid { background: var(--vertex); border-color: var(--vertex); }
+.chip.pop { animation: pop .5s ease; }
+@keyframes pop { 0% { transform: scale(.6); } 60% { transform: scale(1.15); } 100% { transform: scale(1); } }
+.chipw small { font-family: var(--body); font-size: .42em; color: var(--muted); line-height: 1.5; }
+#a1msg { min-height: 1.6em; font-size: clamp(15px, 2vw, 20px); font-weight: 500; }
+#a1msg.good { color: var(--ok); } #a1msg.bad { color: var(--face); }
+#a1choices { display: flex; gap: 8px; flex-wrap: wrap; }
+#a1choices:empty { display: none; }
+#a1choices button { flex: 1 1 160px; }
+#a1bar { display: flex; gap: 10px; flex-wrap: wrap; }
+#a1result { display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+#a1result h2 { font-family: var(--display); font-weight: 400; font-size: clamp(22px, 3.4vw, 34px); margin: 0; }
+#a1result p { margin: 0; font-size: clamp(14px, 1.9vw, 18px); color: var(--muted); }
+.wrongs { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; font-size: clamp(14px, 1.8vw, 18px); }
+.wrongs ul { margin: 6px 0 0; padding-left: 1.2em; } .wrongs li { margin: 4px 0; }
+.wrongs.clean { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+
+/* 활동 2: 각기둥·각뿔·각뿔대 */
+:root { --poly3d-alt: 240,168,118; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --poly3d-alt: 176,112,70; } }
+:root[data-theme="dark"] { --poly3d-alt: 176,112,70; }
+#act2 { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; }
+#a2top { display: flex; align-items: center; gap: 10px 16px; flex-wrap: wrap; }
+#a2task { font-family: var(--display); font-size: clamp(20px, 3.4vw, 34px); margin: 0; font-weight: 400; flex: 1 1 260px; min-width: 0; text-wrap: balance; }
+#a2prog { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#a2def { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 8px 14px; text-align: center; display: flex; flex-direction: column; gap: 4px; }
+#a2def .a2d { font-family: var(--display); font-size: clamp(17px, 2.5vw, 26px); line-height: 1.6; }
+#a2def .a2s { font-size: clamp(14px, 1.9vw, 19px); color: var(--muted); }
+#a2def .a2s b, #a2def .a2d b { font-weight: 700; }
+#a2def .chip { font-size: .9em; }
+#a2stage { flex: 1 1 auto; min-height: 240px; position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; touch-action: none; }
+#a2stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+#a2hint { position: absolute; left: 0; right: 0; top: 8px; text-align: center; font-size: clamp(13px, 1.7vw, 17px); color: var(--muted); pointer-events: none; padding: 0 12px; }
+#a2stamp { position: absolute; left: 12px; bottom: 12px; font-family: var(--display); font-size: clamp(20px, 3.6vw, 34px); padding: 2px 14px; border-radius: 12px; border: 3px solid; pointer-events: none; }
+#a2stamp.yes { color: var(--ok); border-color: var(--ok); background: var(--ok-bg); }
+#a2stamp.no { color: var(--face); border-color: var(--face); background: var(--panel); }
+#a2name { position: absolute; right: 14px; bottom: 14px; font-family: var(--display); font-size: clamp(20px, 3.6vw, 34px); pointer-events: none; }
+#a2ctrl { display: flex; flex-direction: column; gap: 8px; }
+#a2ctrl:empty { display: none; }
+#a2ctrl input[type=range] { flex: 1 1 200px; height: 40px; accent-color: var(--edge); }
+button.pick.mini { flex: 0 1 auto; font-size: clamp(16px, 2.2vw, 22px); min-height: 46px; padding: 6px 16px; }
+#a2msg { min-height: 1.6em; font-size: clamp(15px, 2vw, 20px); font-weight: 500; }
+#a2msg.good { color: var(--ok); } #a2msg.bad { color: var(--face); }
+#a2choices { display: flex; gap: 8px; flex-wrap: wrap; }
+#a2choices:empty { display: none; }
+#a2choices button { flex: 1 1 130px; }
+#a2bar { display: flex; gap: 10px; flex-wrap: wrap; }
+#a2result { display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+#a2result h2 { font-family: var(--display); font-weight: 400; font-size: clamp(22px, 3.4vw, 34px); margin: 0; }
+#a2result p { margin: 0; font-size: clamp(14px, 1.9vw, 18px); color: var(--muted); }
+
+/* 반응형 · 가독성: 휴대폰은 위아래로 넘겨 보고, 패드·PC는 한 화면에 맞춘다 */
+html, body { height: auto; min-height: 100%; }
+body { min-height: 100dvh; width: 100%; max-width: 1180px; margin: 0 auto; }
+#acts { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+#acts::-webkit-scrollbar { display: none; }
+#acts .tab { flex: 0 0 auto; font-size: 15px; white-space: nowrap; }
+#progress, #a1prog, #a2prog { font-size: 15px; }
+#stage, #a1stage, #a2stage { min-height: max(260px, 40vh); }
+#hint, #a1hint, #a2hint { line-height: 1.35; }
+#msg, #a1msg, #a2msg { line-height: 1.5; }
+@media (max-width: 600px) {
+  body { gap: 6px; padding-block: 8px; padding-left: max(10px, env(safe-area-inset-left, 0px)); padding-right: max(10px, env(safe-area-inset-right, 0px)); }
+  #a1board { grid-template-columns: 1fr; flex: 0 0 auto; min-height: 0; }
+  .tiles { grid-auto-rows: auto; }
+  .tile { min-height: 0; aspect-ratio: 4 / 3; }
+  #stage, #a1stage, #a2stage { flex: 0 0 auto; height: 50vh; min-height: 280px; }
+  button { font-size: 18px; padding: 8px 12px; min-height: 48px; }
+  button.pick { flex-basis: 90px; }
+  button.pick.mini { flex: 1 1 0; min-width: 0; padding: 6px 2px; font-size: 16px; }
+  .row .lab { min-width: 3.4em; font-size: 13px; }
+  #a1choices button, #a2choices button { flex-basis: 40%; }
+  #a1stamp, #a2stamp { font-size: 18px; left: 8px; bottom: 8px; padding: 2px 10px; }
+  #a1name, #a2name { font-size: 18px; left: 10px; right: auto; bottom: 50px; }
+  #count { font-size: 30px; }
+  #a1def.big { font-size: 24px; padding: 16px 10px; }
+  #choices button.pick { flex: 1 1 60px; padding: 8px 2px; }
+  table { min-width: 0; font-size: 15px; } th, td { padding: 6px; }
+}
+
+/* 디자인 보완: 오답 색, 고정 단추 막대, 단계 표시, 움직임, 결과 격자, 제목 */
+:root { --bad: #e03131; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bad: #ff6b6b; } }
+:root[data-theme="dark"] { --bad: #ff6b6b; }
+#a1msg.bad, #a2msg.bad { color: var(--bad); }
+#a1stamp.no, #a2stamp.no { color: var(--bad); border-color: var(--bad); }
+.grp.no { border-color: var(--bad); } .grp.no h2 { color: var(--bad); }
+td .miss { color: var(--bad); }
+button:disabled { opacity: .55; }
+button.pick.wrong { opacity: .45; }
+#bar, #a1bar, #a2bar { position: sticky; bottom: 0; z-index: 5; background: var(--bg); padding: 8px 0 calc(4px + env(safe-area-inset-bottom, 0px)); }
+#next, #done, #a1next, #a2next { flex: 1 1 220px; min-height: 56px; font-size: clamp(20px, 2.8vw, 28px); }
+#msg b, #a1msg b, #a2msg b { font-weight: 700; }
+#msg .sub, #a1msg .sub, #a2msg .sub { display: block; font-weight: 400; font-size: .92em; color: var(--fg); margin-top: 2px; }
+#a1stamp, #a2stamp { transform: rotate(-4deg); transform-origin: left bottom; }
+@keyframes stampIn { 0% { transform: scale(1.8) rotate(-12deg); opacity: 0; } 60% { transform: scale(.92) rotate(-4deg); opacity: 1; } 100% { transform: scale(1) rotate(-4deg); } }
+#a1stamp.pop, #a2stamp.pop { animation: stampIn .35s ease-out both; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-8px); } 40% { transform: translateX(8px); } 60% { transform: translateX(-5px); } 80% { transform: translateX(5px); } }
+.shake { animation: shake .35s ease; }
+@keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
+.bump { animation: bump .35s ease; }
+@media (prefers-reduced-motion: reduce) { .pop, .shake, .bump, .chip.pop { animation: none !important; } }
+.stepwrap { display: flex; flex-direction: column; gap: 6px; }
+.steps { display: flex; gap: 6px; list-style: none; margin: 0; padding: 0; counter-reset: st; flex-wrap: wrap; }
+.steps li { counter-increment: st; display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); padding: 3px 12px 3px 4px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); }
+.steps li::before { content: counter(st); display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--line); color: var(--fg); font-size: 13px; font-weight: 700; }
+.steps li.done::before { content: '✓'; background: var(--ok); color: var(--btn-fg); }
+.steps li.on { color: var(--fg); border-color: var(--fg); font-weight: 700; }
+.steps li.on::before { background: var(--fg); color: var(--bg); }
+.pbar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; flex: 0 0 auto; }
+.pbar i { display: block; height: 100%; width: 0; background: var(--edge); transition: width .3s; }
+#brand { font-family: var(--display); font-size: clamp(19px, 2.4vw, 24px); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+#brand small { font-family: var(--body); font-size: 14px; color: var(--muted); }
+.rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.rcell { position: relative; background: var(--panel); border: 2px solid var(--line); border-radius: 12px; aspect-ratio: 1 / 1.05; overflow: hidden; }
+.rcell.ok { border-color: var(--ok); } .rcell.no { border-color: var(--bad); }
+.rcell canvas { position: absolute; left: 0; top: 0; width: 100%; height: calc(100% - 24px); }
+.rcell span { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font-size: 13px; font-weight: 500; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rcell b { position: absolute; right: 7px; top: 2px; font-family: var(--display); font-size: 22px; }
+.rcell.ok b { color: var(--ok); } .rcell.no b { color: var(--bad); }
+@media (max-width: 600px) {
+  #brand small { display: none; }
+  .steps li:not(.on) { font-size: 0; padding: 3px; gap: 0; }
+  .steps li:not(.on)::before { font-size: 13px; }
+  .rgrid { grid-template-columns: repeat(3, 1fr); }
+  #stage, #a1stage, #a2stage { height: 42vh; min-height: 260px; }
+  #a1name, #a2name { top: 32px; bottom: auto; left: 10px; right: auto; }
+}
+</style>
+
+<div id="brand">입체도형 탐구 <small>다면체 · 기둥 · 뿔 · 뿔대 알아보기</small></div>
+<nav id="acts" aria-label="활동 고르기">
+  <button type="button" class="tab on" data-act="1">활동 1 · 다면체일까?</button>
+  <button type="button" class="tab" data-act="2">활동 2 · 기둥·뿔·뿔대</button>
+  <button type="button" class="tab" data-act="3">활동 3 · 세어 보기</button>
+</nav>
+
+<section id="act1">
+  <div class="stepwrap"><ol class="steps" id="a1steps"></ol><div class="pbar"><i id="a1pbar"></i></div></div>
+  <div id="a1top">
+    <h1 id="a1task"></h1>
+    <span id="a1prog"></span>
+  </div>
+  <div id="a1board" hidden></div>
+  <div id="a1def" hidden></div>
+  <div id="a1stage" hidden>
+    <canvas id="a1cv" role="img" aria-label="손가락으로 돌릴 수 있는 입체도형"></canvas>
+    <div id="a1hint">손가락으로 밀면 도형이 돌아가요</div>
+    <div id="a1stamp" hidden></div>
+    <div id="a1name" hidden></div>
+  </div>
+  <div id="a1msg" aria-live="polite"></div>
+  <div id="a1choices"></div>
+  <div id="a1bar"><button type="button" id="a1next" class="primary">다음</button></div>
+  <div id="a1result" hidden></div>
+</section>
+
+<section id="act2" hidden>
+  <div class="stepwrap"><ol class="steps" id="a2steps"></ol><div class="pbar"><i id="a2pbar"></i></div></div>
+  <div id="a2top">
+    <h1 id="a2task"></h1>
+    <span id="a2prog"></span>
+  </div>
+  <div id="a2def" hidden></div>
+  <div id="a2stage">
+    <canvas id="a2cv" role="img" aria-label="손가락으로 돌릴 수 있는 입체도형"></canvas>
+    <div id="a2hint">손가락으로 밀면 도형이 돌아가요</div>
+    <div id="a2stamp" hidden></div>
+    <div id="a2name" hidden></div>
+  </div>
+  <div id="a2ctrl"></div>
+  <div id="a2msg" aria-live="polite"></div>
+  <div id="a2choices"></div>
+  <div id="a2bar"><button type="button" id="a2next" class="primary">다음</button></div>
+  <div id="a2result" hidden></div>
+</section>
+
+<section id="play" style="display:contents" hidden>
+  <div class="pbar"><i id="pbar3"></i></div>
+  <div id="top">
+    <h1 id="task"></h1>
+    <span id="progress"></span>
+  </div>
+  <div id="stage">
+    <canvas id="cv" role="img" aria-label="손가락으로 돌릴 수 있는 입체도형"></canvas>
+    <div id="hint">손가락으로 밀면 도형이 돌아가요</div>
+    <div id="count" aria-live="polite"></div>
+  </div>
+  <div id="msg" aria-live="polite"></div>
+  <div id="choices" hidden></div>
+  <div id="bar">
+    <button type="button" id="reset">다시 세기</button>
+    <button type="button" id="done" class="primary">다 셌어요</button>
+    <button type="button" id="next" class="primary" hidden>다음</button>
+  </div>
+</section>
+
+<section id="result" hidden>
+  <h2>다 했어요! 선생님께 이 화면을 보여 주세요</h2>
+  <p>표를 보고 생각해 보기: 기둥은 꼭짓점의 수가 밑면 꼭짓점의 몇 배일까?</p>
+  <div class="tablewrap"><table id="rtable"></table></div>
+  <div id="errors"></div>
+  <div><button type="button" id="again">처음부터 다시</button></div>
+</section>
+
+<script>
+(function () {
+  var NAMES = { 3: '삼각', 4: '사각', 5: '오각', 6: '육각' };
+  var HANJA = { 4: '사', 5: '오', 6: '육', 7: '칠', 8: '팔' };
+  var KIND = { prism: '기둥', pyramid: '뿔', frustum: '뿔대' };
+  // 순서: 익숙한 상자 → 삼각기둥 → 사각뿔 → 오각기둥 → 삼각뿔 → 사각뿔대
+  var SOLIDS = [
+    { kind: 'prism', n: 4 }, { kind: 'prism', n: 3 }, { kind: 'pyramid', n: 4 },
+    { kind: 'prism', n: 5 }, { kind: 'pyramid', n: 3 }, { kind: 'frustum', n: 4 }
+  ];
+  var MODES = [
+    { key: 'face', word: '면', cls: 'c-face', tip: '평평한 부분' },
+    { key: 'edge', word: '모서리', cls: 'c-edge', tip: '면과 면이 만나는 선' },
+    { key: 'vertex', word: '꼭짓점', cls: 'c-vertex', tip: '뾰족한 점' }
+  ];
+
+  function build(s) {
+    var n = s.n, V = [], F = [], i, h = s.kind === 'pyramid' ? 1.7 : 1.5;
+    var rt = s.kind === 'prism' ? 1 : s.kind === 'frustum' ? 0.55 : 0;
+    var off = n === 4 ? Math.PI / 4 : -Math.PI / 2;
+    for (i = 0; i < n; i++) { var a = off + i * 2 * Math.PI / n; V.push([Math.cos(a), -h / 2, Math.sin(a)]); }
+    if (rt === 0) { V.push([0, h / 2, 0]); for (i = 0; i < n; i++) F.push([i, (i + 1) % n, n]); }
+    else {
+      for (i = 0; i < n; i++) { var b = off + i * 2 * Math.PI / n; V.push([rt * Math.cos(b), h / 2, rt * Math.sin(b)]); }
+      var top = []; for (i = 0; i < n; i++) top.push(n + i); F.push(top);
+      for (i = 0; i < n; i++) F.push([i, (i + 1) % n, n + (i + 1) % n, n + i]);
+    }
+    var bottom = []; for (i = 0; i < n; i++) bottom.push(i); F.push(bottom);
+    // 면의 꼭짓점 순서를 바깥을 향하게 맞춘다 (볼록한 도형이므로 중심에서 멀어지는 쪽이 바깥)
+    F = F.map(function (f) {
+      var c = [0, 0, 0]; f.forEach(function (k) { c[0] += V[k][0] / f.length; c[1] += V[k][1] / f.length; c[2] += V[k][2] / f.length; });
+      var p = V[f[0]], q = V[f[1]], r = V[f[2]];
+      var u = [q[0] - p[0], q[1] - p[1], q[2] - p[2]], w = [r[0] - q[0], r[1] - q[1], r[2] - q[2]];
+      var nx = u[1] * w[2] - u[2] * w[1], ny = u[2] * w[0] - u[0] * w[2], nz = u[0] * w[1] - u[1] * w[0];
+      return (nx * c[0] + ny * c[1] + nz * c[2]) < 0 ? f.slice().reverse() : f;
+    });
+    var E = [], seen = {};
+    F.forEach(function (f, fi) {
+      for (var k = 0; k < f.length; k++) {
+        var a2 = f[k], b2 = f[(k + 1) % f.length], key = Math.min(a2, b2) + '-' + Math.max(a2, b2);
+        if (seen[key] === undefined) { seen[key] = E.length; E.push({ a: a2, b: b2, faces: [fi] }); } else E[seen[key]].faces.push(fi);
+      }
+    });
+    return { V: V, F: F, E: E };
+  }
+  function solidName(s) { return NAMES[s.n] + KIND[s.kind]; }
+  // 받침이 있으면 이/을/은, 없으면 가/를/는
+  function josa(w, withB, without) { var c = w.charCodeAt(w.length - 1) - 0xAC00; return w + ((c >= 0 && c % 28) ? withB : without); }
+  function faceCount(s) { return s.kind === 'pyramid' ? s.n + 1 : s.n + 2; }
+
+  var cv = document.getElementById('cv'), ctx = cv.getContext('2d'), stage = document.getElementById('stage');
+  var W = 0, H = 0, dpr = 1;
+  var st = { si: 0, step: 0, geo: null, sel: [], yaw: 0.6, pitch: 0.38, tries: 0, flash: 0, log: [], results: [], shape: null, kindPick: null };
+  // step: 0 이름 짓기 / 1 면 / 2 모서리 / 3 꼭짓점 (활동 2에서 배운 이름을 먼저 떠올리고 센다)
+  function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+
+  function project() {
+    var cy = Math.cos(st.yaw), sy = Math.sin(st.yaw), cp = Math.cos(st.pitch), sp = Math.sin(st.pitch);
+    var scale = Math.min(W, H) * 0.36, ox = W / 2, oy = H / 2 + 6;
+    return st.geo.V.map(function (v) {
+      var x = v[0] * cy + v[2] * sy, z = -v[0] * sy + v[2] * cy, y = v[1];
+      var y2 = y * cp - z * sp, z2 = y * sp + z * cp;
+      return { x: ox + x * scale, y: oy - y2 * scale, z: z2 };
+    });
+  }
+  function frontFacing(P, f) {     // 화면에서 반시계 방향이면 앞면
+    var a = 0; for (var k = 0; k < f.length; k++) { var p = P[f[k]], q = P[f[(k + 1) % f.length]]; a += p.x * q.y - q.x * p.y; }
+    return a < 0;
+  }
+  function centroid(P, f) { var x = 0, y = 0, z = 0; f.forEach(function (k) { x += P[k].x; y += P[k].y; z += P[k].z; }); return { x: x / f.length, y: y / f.length, z: z / f.length }; }
+  function mode() { return MODES[Math.max(0, st.step - 1)]; }
+  function total() { var g = st.geo; return st.step === 1 ? g.F.length : st.step === 2 ? g.E.length : g.V.length; }
+
+  function badge(x, y, num, color) {
+    var r = Math.max(13, Math.min(W, H) * 0.028);
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = css('--btn-fg'); ctx.font = (r * 1.15) + 'px ' + css('--display'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(num), x, y + 1);
+  }
+
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    var g = st.geo, P = project(), m = st.step >= 1 ? mode().key : 'none';
+    var cFace = css('--face'), cEdge = css('--edge'), cVertex = css('--vertex'), fg = css('--fg'), muted = css('--muted');
+    var front = g.F.map(function (f) { return frontFacing(P, f); });
+    var blink = st.flash > 0 && Math.floor(st.flash / 180) % 2 === 0;
+    var order = g.F.map(function (f, i) { return i; }).sort(function (a, b) { return front[a] - front[b]; });   // 뒷면 먼저
+    order.forEach(function (fi) {
+      var f = g.F[fi], isSel = m === 'face' && st.sel.indexOf(fi) >= 0, miss = m === 'face' && blink && !isSel;
+      ctx.beginPath(); f.forEach(function (k, j) { j ? ctx.lineTo(P[k].x, P[k].y) : ctx.moveTo(P[k].x, P[k].y); }); ctx.closePath();
+      ctx.globalAlpha = isSel ? (front[fi] ? 0.82 : 0.4) : miss ? 0.55 : (front[fi] ? 0.72 : 0.25);
+      ctx.fillStyle = isSel ? cFace : miss ? cFace : (front[fi] ? css('--solid') : css('--solid-back'));
+      ctx.fill(); ctx.globalAlpha = 1;
+    });
+    g.E.forEach(function (e, ei) {
+      var hidden = !front[e.faces[0]] && !front[e.faces[1]], isSel = m === 'edge' && st.sel.indexOf(ei) >= 0, miss = m === 'edge' && blink && !isSel;
+      ctx.beginPath(); ctx.moveTo(P[e.a].x, P[e.a].y); ctx.lineTo(P[e.b].x, P[e.b].y);
+      ctx.setLineDash(hidden ? [7, 6] : []); ctx.lineCap = 'round';
+      ctx.strokeStyle = isSel || miss ? cEdge : (hidden ? muted : fg);
+      ctx.lineWidth = isSel ? 7 : miss ? 6 : (m === 'edge' ? 3.5 : 2.5); ctx.globalAlpha = hidden && !isSel ? 0.7 : 1;
+      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    });
+    if (m === 'vertex') {
+      g.V.forEach(function (v, vi) {
+        var isSel = st.sel.indexOf(vi) >= 0, miss = blink && !isSel;
+        ctx.beginPath(); ctx.arc(P[vi].x, P[vi].y, isSel || miss ? 9 : 7, 0, Math.PI * 2);
+        ctx.fillStyle = isSel || miss ? cVertex : css('--panel'); ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = isSel || miss ? cVertex : fg; ctx.stroke();
+      });
+    }
+    // 누른 순서대로 번호를 붙여 준다 (세다가 잊지 않게)
+    st.sel.forEach(function (id, order2) {
+      if (m === 'face') { var c = centroid(P, g.F[id]); badge(c.x, c.y, order2 + 1, cFace); }
+      else if (m === 'edge') { var e = g.E[id]; badge((P[e.a].x + P[e.b].x) / 2, (P[e.a].y + P[e.b].y) / 2, order2 + 1, cEdge); }
+      else if (m === 'vertex') { badge(P[id].x, P[id].y - 24, order2 + 1, cVertex); }
+    });
+  }
+
+  function pick(x, y) {
+    var g = st.geo, P = project(), m = mode().key, best = -1, bd = 1e9, i;
+    if (m === 'vertex') {
+      for (i = 0; i < P.length; i++) { var d = Math.hypot(P[i].x - x, P[i].y - y) - P[i].z * 2; if (Math.hypot(P[i].x - x, P[i].y - y) < 36 && d < bd) { bd = d; best = i; } }
+    } else if (m === 'edge') {
+      for (i = 0; i < g.E.length; i++) {
+        var a = P[g.E[i].a], b = P[g.E[i].b], dx = b.x - a.x, dy = b.y - a.y, t = Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / (dx * dx + dy * dy)));
+        var dist = Math.hypot(a.x + t * dx - x, a.y + t * dy - y), score = dist - (a.z + b.z);
+        if (dist < 24 && score < bd) { bd = score; best = i; }
+      }
+    } else {
+      for (i = 0; i < g.F.length; i++) {
+        var f = g.F[i]; if (!frontFacing(P, f)) continue;
+        var inside = false;
+        for (var k = 0, j = f.length - 1; k < f.length; j = k++) {
+          var p = P[f[k]], q = P[f[j]];
+          if ((p.y > y) !== (q.y > y) && x < (q.x - p.x) * (y - p.y) / (q.y - p.y) + p.x) inside = !inside;
+        }
+        if (inside) { best = i; break; }       // 앞을 향한 면은 서로 겹치지 않는다
+      }
+    }
+    return best;
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+  function say(t, good, sub) { var cls = good ? 'good' : '';
+    var el = $('msg'); el.className = cls || ''; el.textContent = '';
+    if (!t) return;
+    if (sub === undefined) { var mm = /^(.+?[.!?])\s+(.+)$/.exec(t); if (mm) { t = mm[1]; sub = mm[2]; } }   // 첫 문장은 굵게, 나머지는 작게
+    var b = document.createElement('b'); b.textContent = t; el.appendChild(b);
+    if (sub) { var s = document.createElement('span'); s.className = 'sub'; s.textContent = sub; el.appendChild(s); }
+  }
+  function anim(el, c) { el.classList.remove(c); void el.offsetWidth; el.classList.add(c); }
+
+  function showTask() {
+    var s = SOLIDS[st.si], counting = st.step >= 1;
+    $('progress').textContent = '도형 ' + (st.si + 1) + ' / ' + SOLIDS.length;
+    $('pbar3').style.width = Math.round((st.si * 4 + st.step) / (SOLIDS.length * 4) * 100) + '%';
+    $('choices').hidden = counting; $('reset').hidden = !counting; $('done').hidden = !counting; $('next').hidden = true;
+    $('count').textContent = '';
+    if (counting) {
+      var m = mode();
+      $('task').innerHTML = '<b class="' + m.cls + '">' + m.word + '</b>' + josa(m.word, '을', '를').slice(m.word.length) + ' 모두 눌러 보세요';
+      $('hint').textContent = m.word + ' = ' + m.tip + ' · 손가락으로 밀면 도형이 돌아가요';
+      $('count').className = m.cls; updateCount(); say('');
+    } else {
+      $('hint').textContent = '도형을 돌려 보며 밑면의 모양을 찾아보세요';
+      $('task').textContent = '먼저 이 도형의 이름을 지어 보세요';
+      st.shape = null; st.kindPick = null; renderChoices(); say('밑면의 모양과 도형의 종류를 하나씩 고르세요.');
+    }
+    draw();
+  }
+  function updateCount() { $('count').textContent = st.sel.length + '개'; }
+
+  function renderChoices() {
+    var box = $('choices'); box.innerHTML = '';
+    [['밑면 모양', [3, 4, 5, 6].map(function (n) { return [n, NAMES[n] + '형']; }), 'shape'],
+     ['도형의 종류', [['prism', '기둥'], ['pyramid', '뿔'], ['frustum', '뿔대']], 'kindPick']].forEach(function (grp) {
+      var row = document.createElement('div'); row.className = 'row';
+      var lab = document.createElement('span'); lab.className = 'lab'; lab.textContent = grp[0]; row.appendChild(lab);
+      grp[1].forEach(function (opt) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'pick' + (st[grp[2]] === opt[0] ? ' sel' : ''); b.textContent = opt[1];
+        b.id = 'pick-' + grp[2] + '-' + opt[0];
+        b.addEventListener('click', function () { st[grp[2]] = opt[0]; renderChoices(); checkName(); });
+        row.appendChild(b);
+      });
+      box.appendChild(row);
+    });
+  }
+  function checkName() {
+    if (st.shape === null || st.kindPick === null) return;
+    var s = SOLIDS[st.si], picked = NAMES[st.shape] + KIND[st.kindPick];
+    if (st.shape === s.n && st.kindPick === s.kind) {
+      st.results[st.si].name = solidName(s);
+      say('맞아요! 밑면이 ' + NAMES[s.n] + '형인 ' + KIND[s.kind] + ' → ' + solidName(s) + '. 이제 면, 모서리, 꼭짓점을 세어 볼까요?', true);
+      Array.prototype.forEach.call(document.querySelectorAll('button.pick'), function (b) { b.disabled = true; });
+      $('next').hidden = false;
+    } else {
+      st.log.push(solidName(s) + '의 이름을 "' + picked + '"(이)라고 함');
+      st.results[st.si].nameMiss = (st.results[st.si].nameMiss || []).concat(picked);
+      var shapeWrong = st.shape !== s.n, kindWrong = st.kindPick !== s.kind;
+      say(shapeWrong ? '밑면의 모양을 다시 볼까요? 도형을 돌려서 바닥에 닿는 면의 변을 세어 보세요.'
+                     : '위가 한 점으로 모이면 뿔, 윗면과 아랫면이 똑같으면 기둥, 윗면이 아랫면보다 작으면 뿔대예요. 다시 골라 보세요.');
+      // 틀린 쪽만 지워서 다시 고르게 한다 (맞은 쪽은 그대로 둔다)
+      if (shapeWrong) st.shape = null;
+      if (kindWrong) st.kindPick = null;
+      renderChoices(); anim($('choices'), 'shake');
+    }
+  }
+
+  function onDone() {
+    var s = SOLIDS[st.si], m = mode(), tot = total(), r = st.results[st.si];
+    if (st.sel.length === tot) {
+      anim($('count'), 'bump'); r[m.key] = tot; say(josa(m.word, '은', '는') + ' 모두 ' + tot + '개! 잘 찾았어요.' + (m.key === 'face' && HANJA[tot] ? ' 면이 ' + tot + '개인 다면체라서 ' + HANJA[tot] + '면체이기도 해요.' : ''), true);
+      $('done').hidden = true; $('reset').hidden = true; $('next').hidden = false;
+    } else {
+      st.tries++; anim($('done'), 'shake');
+      st.log.push((s.preview ? '사각뿔대' : solidName(s)) + '의 ' + josa(m.word, '을', '를') + ' ' + st.sel.length + '개라고 함 (실제 ' + tot + '개)');
+      r[m.key + 'Miss'] = (r[m.key + 'Miss'] || []).concat(st.sel.length);
+      if (st.tries >= 2) { say('아직 못 찾은 ' + josa(m.word, '이', '가') + ' 있어요. 깜빡이는 곳을 보세요.'); flashMissing(); }
+      else say('아직 못 찾은 ' + josa(m.word, '이', '가') + ' 있어요. 도형을 돌려서 뒤쪽도 찾아보세요.');
+    }
+  }
+  var flashRaf = 0;
+  function flashMissing() {
+    cancelAnimationFrame(flashRaf); var t0 = performance.now();
+    (function tick(now) { st.flash = 1 + (now - t0); if (now - t0 < 1500) { draw(); flashRaf = requestAnimationFrame(tick); } else { st.flash = 0; draw(); } })(t0);
+  }
+  function onNext() {
+    st.sel = []; st.tries = 0;
+    if (st.step < 3) st.step++; else { st.si++; st.step = 0; if (st.si < SOLIDS.length) { st.geo = build(SOLIDS[st.si]); st.yaw = 0.6; st.pitch = 0.38; } }
+    if (st.si >= SOLIDS.length) return showResult();
+    showTask();
+  }
+
+  function showResult() {
+    $('play').hidden = true; $('result').hidden = false;
+    var cell = function (r, k) { return '<td>' + (r[k] || '') + (r[k + 'Miss'] ? '<span class="miss">처음엔 ' + r[k + 'Miss'].join(', ') + '개</span>' : '') + '</td>'; };
+    $('rtable').innerHTML = '<tr><th>도형</th><th>면</th><th>모서리</th><th>꼭짓점</th></tr>' + SOLIDS.map(function (s, i) {
+      var r = st.results[i];
+      return '<tr><td>' + (s.preview ? '사각뿔대' : solidName(s)) + (r.nameMiss ? '<span class="miss">이름을 ' + r.nameMiss.join(', ') + '(이)라고 함</span>' : '') + '</td>' + cell(r, 'face') + cell(r, 'edge') + cell(r, 'vertex') + '</tr>';
+    }).join('');
+    var e = $('errors');
+    if (!st.log.length) { e.className = 'clean'; e.textContent = '한 번도 틀리지 않았어요!'; }
+    else { e.className = ''; e.innerHTML = '<b>다시 생각해 본 곳 ' + st.log.length + '군데</b><ul>' + st.log.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>'; }
+  }
+  function start() {
+    st.si = 0; st.step = 0; st.sel = []; st.tries = 0; st.log = []; st.results = SOLIDS.map(function () { return {}; });
+    st.geo = build(SOLIDS[0]); st.yaw = 0.6; st.pitch = 0.38;
+    $('play').hidden = false; $('result').hidden = true; showTask();
+  }
+
+  // 손가락: 밀면 돌리기, 살짝 누르면 고르기
+  var drag = null;
+  stage.addEventListener('pointerdown', function (e) { stage.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, moved: false, yaw: st.yaw, pitch: st.pitch }; });
+  stage.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 9) return;
+    drag.moved = true; st.yaw = drag.yaw + dx * 0.01; st.pitch = Math.max(-1.45, Math.min(1.45, drag.pitch + dy * 0.01)); draw();
+  });
+  function endDrag(e) {
+    if (!drag) return;
+    var wasTap = !drag.moved; drag = null;
+    if (!wasTap || st.step < 1 || !$('next').hidden) return;
+    var b = cv.getBoundingClientRect(), id = pick(e.clientX - b.left, e.clientY - b.top);
+    if (id < 0) return;
+    var at = st.sel.indexOf(id); if (at >= 0) st.sel.splice(at, 1); else st.sel.push(id);
+    updateCount(); say(''); draw();
+  }
+  stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', function () { drag = null; });
+
+  $('reset').addEventListener('click', function () { st.sel = []; updateCount(); say(''); draw(); });
+  $('done').addEventListener('click', onDone);
+  $('next').addEventListener('click', onNext);
+  $('again').addEventListener('click', start);
+
+  function resize() {
+    var b = stage.getBoundingClientRect(); W = Math.max(200, b.width); H = Math.max(160, b.height); dpr = Math.min(3, window.devicePixelRatio || 1);
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); if (st.geo) draw();
+  }
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(stage); else window.addEventListener('resize', resize);
+  new MutationObserver(function () { if (st.geo) draw(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (st.geo) draw(); });
+
+  // 활동 1을 마치거나 위 탭을 누르면 시작한다
+  window.__count = { start: function () { start(); resize(); } };
+})();
+</script>
+
+<script>
+(function () {
+  // ---------- 도형 만들기 (꼭짓점 V, 면 F: 바깥에서 볼 때 반시계 순서) ----------
+  function regular(n, r) { var off = n === 4 ? Math.PI / 4 : -Math.PI / 2, p = []; for (var i = 0; i < n; i++) { var a = off + i * 2 * Math.PI / n; p.push([r * Math.cos(a), r * Math.sin(a)]); } return p; }
+  function circle(n, r) { var p = []; for (var i = 0; i < n; i++) { var a = i * 2 * Math.PI / n; p.push([r * Math.cos(a), r * Math.sin(a)]); } return p; }
+  function star(n, r1, r2) { var p = []; for (var i = 0; i < 2 * n; i++) { var a = -Math.PI / 2 + i * Math.PI / n, r = i % 2 ? r2 : r1; p.push([r * Math.cos(a), r * Math.sin(a)]); } return p; }
+  // 바닥 다각형(x, z)을 위로 세운다. top: 1 기둥, 0 뿔, 그 사이 뿔대. noTop: 뚜껑 없음
+  function extrude(poly, h, o) {
+    o = o || {}; var s = o.top === undefined ? 1 : o.top, dx = o.dx || 0, dz = o.dz || 0, n = poly.length, ny = 0, i, j;
+    for (i = 0; i < n; i++) { j = (i + 1) % n; ny += (poly[i][1] - poly[j][1]) * (poly[i][0] + poly[j][0]); }
+    if (ny < 0) poly = poly.slice().reverse();
+    var V = poly.map(function (p) { return [p[0], -h / 2, p[1]]; }), F = [], bottom = [];
+    for (i = n - 1; i >= 0; i--) bottom.push(i);
+    F.push(bottom);
+    if (s === 0) { V.push([dx, h / 2, dz]); for (i = 0; i < n; i++) F.push([i, (i + 1) % n, n]); }
+    else {
+      poly.forEach(function (p) { V.push([p[0] * s + dx, h / 2, p[1] * s + dz]); });
+      if (!o.noTop) { var top = []; for (i = 0; i < n; i++) top.push(n + i); F.push(top); }
+      for (i = 0; i < n; i++) { j = (i + 1) % n; F.push([i, j, n + j, n + i]); }
+    }
+    return { V: V, F: F, open: !!o.noTop };
+  }
+  // 옆모습 [반지름, 높이]를 아래에서 위로 돌려 만든 회전체
+  function lathe(prof, seg) {
+    var V = [], ring = [], F = [], i, j;
+    prof.forEach(function (p) {
+      if (p[0] < 1e-6) { ring.push([V.length]); V.push([0, p[1], 0]); }
+      else { var r = []; for (j = 0; j < seg; j++) { var a = j * 2 * Math.PI / seg; r.push(V.length); V.push([p[0] * Math.cos(a), p[1], p[0] * Math.sin(a)]); } ring.push(r); }
+    });
+    function at(i2, j2) { var r = ring[i2]; return r.length === 1 ? r[0] : r[j2 % seg]; }
+    for (i = 0; i < prof.length - 1; i++) for (j = 0; j < seg; j++) {
+      var f = [];
+      [at(i, j), at(i + 1, j), at(i + 1, j + 1), at(i, j + 1)].forEach(function (k) { if (f[f.length - 1] !== k) f.push(k); });
+      if (f.length > 1 && f[0] === f[f.length - 1]) f.pop();
+      if (f.length >= 3) F.push(f);
+    }
+    return { V: V, F: F };
+  }
+  function arc(r, y0, steps, from) { var p = []; for (var k = from; k <= steps; k++) { var t = Math.PI / 2 * k / steps; p.push([r * Math.cos(t), y0 + r * Math.sin(t)]); } return p; }
+  function lay(m) { m.V = m.V.map(function (v) { return [v[0], -v[2], v[1]]; }); return m; }   // x축으로 90° 돌려 눕히기
+  function newell(V, f) {
+    var n = [0, 0, 0];
+    for (var k = 0; k < f.length; k++) { var a = V[f[k]], b = V[f[(k + 1) % f.length]]; n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]); }
+    var l = Math.hypot(n[0], n[1], n[2]) || 1; return [n[0] / l, n[1] / l, n[2] / l];
+  }
+  function convex(V, F) {   // 볼록한 도형: 중심에서 멀어지는 쪽이 바깥
+    var c = [0, 0, 0]; V.forEach(function (v) { c[0] += v[0] / V.length; c[1] += v[1] / V.length; c[2] += v[2] / V.length; });
+    F = F.map(function (f) {
+      var n = newell(V, f), m = [0, 0, 0]; f.forEach(function (k) { m[0] += V[k][0] / f.length; m[1] += V[k][1] / f.length; m[2] += V[k][2] / f.length; });
+      return n[0] * (m[0] - c[0]) + n[1] * (m[1] - c[1]) + n[2] * (m[2] - c[2]) < 0 ? f.slice().reverse() : f;
+    });
+    return { V: V, F: F };
+  }
+  function finish(m) {
+    m.N = m.F.map(function (f) { return newell(m.V, f); });
+    var seen = {}; m.E = []; m.FE = m.F.map(function (f, fi) {
+      return f.map(function (a, k) {
+        var b = f[(k + 1) % f.length], key = Math.min(a, b) + '-' + Math.max(a, b);
+        if (seen[key] === undefined) { seen[key] = m.E.length; m.E.push({ a: a, b: b, f: [fi] }); } else m.E[seen[key]].f.push(fi);
+        return seen[key];
+      });
+    });
+    // 날카로운 모서리(면이 꺾이는 곳)와 테두리만 선으로 그린다. 곡면의 잔 조각 사이는 그리지 않는다
+    m.E.forEach(function (e) { e.sharp = e.f.length < 2 || (function (p, q) { return p[0] * q[0] + p[1] * q[1] + p[2] * q[2]; })(m.N[e.f[0]], m.N[e.f[1]]) < 0.9; });
+    var lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+    m.V.forEach(function (v) { for (var k = 0; k < 3; k++) { lo[k] = Math.min(lo[k], v[k]); hi[k] = Math.max(hi[k], v[k]); } });
+    m.c = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2];
+    m.R = 0; m.V.forEach(function (v) { m.R = Math.max(m.R, Math.hypot(v[0] - m.c[0], v[1] - m.c[1], v[2] - m.c[2])); });
+    return m;
+  }
+  function plane(n) { var p = regular(n, 1.1); return { V: p.map(function (q) { return [q[0], 0, q[1]]; }), F: [p.map(function (q, i) { return i; })], open: true }; }
+  var halfDisc = []; for (var hk = 0; hk <= 20; hk++) halfDisc.push([Math.cos(Math.PI * hk / 20), -Math.sin(Math.PI * hk / 20)]);
+  var sphereProf = []; for (var sk = 0; sk <= 14; sk++) { var st0 = -Math.PI / 2 + Math.PI * sk / 14; sphereProf.push([Math.cos(st0), Math.sin(st0)]); }
+
+  var WHY = {
+    poly: '모든 면이 다각형이고, 빈틈없이 둘러싸인 입체도형이에요.',
+    dent: '움푹 들어간 곳이 있어도 모든 면이 다각형이면 다면체예요.',
+    tilt: '기울어져 있어도 모든 면이 다각형이에요.',
+    lie: '눕혀 놓아도 같은 도형이에요. 모든 면이 다각형이에요.',
+    cut: '윗면, 아랫면, 옆면이 모두 다각형이에요.',
+    curve: '옆면이 굽은 면(곡면)이에요.',
+    open: '면은 모두 다각형이지만 위가 뚫려 있어서 둘러싸여 있지 않아요.',
+    flat: '두께가 없는 평면도형이에요. 입체도형이 아니에요.'
+  };
+  // [이름, 다면체인가, 까닭, 만들기]
+  var SH = {
+    cube: ['정육면체', true, WHY.poly, function () { return extrude(regular(4, 1), 1.414); }],
+    cuboidFlat: ['납작한 직육면체', true, WHY.poly, function () { return extrude([[-1.3, -0.8], [1.3, -0.8], [1.3, 0.8], [-1.3, 0.8]], 0.6); }],
+    triPrism: ['삼각기둥', true, WHY.poly, function () { return extrude(regular(3, 1), 1.5); }],
+    pentPrism: ['오각기둥', true, WHY.poly, function () { return extrude(regular(5, 1), 1.4); }],
+    hexPrism: ['육각기둥', true, WHY.poly, function () { return extrude(regular(6, 1), 1.2); }],
+    sqPyr: ['사각뿔', true, WHY.poly, function () { return extrude(regular(4, 1), 1.6, { top: 0 }); }],
+    pentPyr: ['오각뿔', true, WHY.poly, function () { return extrude(regular(5, 1), 1.5, { top: 0 }); }],
+    hexPyr: ['육각뿔', true, WHY.poly, function () { return extrude(regular(6, 1), 1.3, { top: 0 }); }],
+    sqFrustum: ['사각뿔대', true, WHY.cut, function () { return extrude(regular(4, 1), 1.2, { top: 0.5 }); }],
+    triFrustum: ['삼각뿔대', true, WHY.cut, function () { return extrude(regular(3, 1.1), 1.1, { top: 0.45 }); }],
+    obliquePrism: ['기울어진 육면체', true, WHY.tilt, function () { return extrude(regular(4, 0.9), 1.5, { dx: 0.7 }); }],
+    lPrism: ['ㄴ자 모양 기둥', true, WHY.dent, function () { return lay(extrude([[-1, -1], [-0.3, -1], [-0.3, 0.3], [1, 0.3], [1, 1], [-1, 1]], 0.9)); }],
+    stairPrism: ['계단 모양 기둥', true, WHY.dent, function () { return lay(extrude([[-1.2, 0.9], [1.2, 0.9], [1.2, 0.1], [0.4, 0.1], [0.4, -0.7], [-0.4, -0.7], [-0.4, -1.5], [-1.2, -1.5]], 1.2)); }],
+    starPrism: ['별 모양 기둥', true, WHY.dent, function () { return extrude(star(5, 1, 0.45), 0.6); }],
+    crossPrism: ['십자 모양 기둥', true, WHY.dent, function () { return extrude([[-0.35, -1], [0.35, -1], [0.35, -0.35], [1, -0.35], [1, 0.35], [0.35, 0.35], [0.35, 1], [-0.35, 1], [-0.35, 0.35], [-1, 0.35], [-1, -0.35], [-0.35, -0.35]], 0.7); }],
+    house: ['집 모양 오각기둥', true, WHY.poly, function () { return lay(extrude([[-1, 0.9], [1, 0.9], [1, -0.3], [0, -1.2], [-1, -0.3]], 1.6)); }],
+    triPrismLying: ['누운 삼각기둥', true, WHY.lie, function () { return lay(extrude(regular(3, 1), 1.9)); }],
+    octa: ['팔면체', true, '삼각형 면 8개로 빈틈없이 둘러싸여 있어요.', function () {
+      var V = [[1, 0, 0], [0, 0, 1], [-1, 0, 0], [0, 0, -1], [0, 1.1, 0], [0, -1.1, 0]], F = [];
+      for (var i = 0; i < 4; i++) { F.push([i, (i + 1) % 4, 4]); F.push([i, (i + 1) % 4, 5]); }
+      return convex(V, F);
+    }],
+    oddTet: ['삐뚤빼뚤한 삼각뿔', true, '모양이 삐뚤어도 삼각형 면 4개로 둘러싸여 있어요.', function () {
+      return convex([[-1, -0.6, -0.5], [1.2, -0.6, -0.3], [0.1, -0.6, 1], [0.5, 1, 0.2]], [[0, 1, 2], [0, 1, 3], [1, 2, 3], [0, 2, 3]]);
+    }],
+    cylinder: ['원기둥', false, WHY.curve, function () { return extrude(circle(40, 1), 1.8); }],
+    cylinderLying: ['누운 원기둥', false, WHY.curve, function () { return lay(extrude(circle(40, 0.8), 2.2)); }],
+    cone: ['원뿔', false, '꼭짓점은 있지만 옆면이 굽은 면이에요.', function () { return extrude(circle(40, 1), 1.8, { top: 0 }); }],
+    coneFrustum: ['원뿔대', false, '윗면과 아랫면은 평평하지만 옆면이 굽은 면이에요.', function () { return extrude(circle(40, 1), 1.3, { top: 0.5 }); }],
+    sphere: ['구', false, '전체가 굽은 면 하나로 되어 있어요.', function () { return lathe(sphereProf, 28); }],
+    hemisphere: ['반구', false, '아랫면은 평평하지만 윗부분이 굽은 면이에요.', function () { return lathe([[0, -0.5], [1, -0.5]].concat(arc(1, -0.5, 10, 1)), 32); }],
+    capsule: ['원기둥 위에 반구', false, '옆면과 윗부분이 굽은 면이에요.', function () { return lathe([[0, -1], [0.75, -1], [0.75, 0.3]].concat(arc(0.75, 0.3, 10, 1)), 32); }],
+    halfCyl: ['반원기둥', false, '평평한 면이 3개 있지만, 굽은 면이 하나 있어요.', function () { return lay(extrude(halfDisc, 1.8)); }],
+    openBox: ['뚜껑 없는 상자', false, WHY.open, function () { return extrude(regular(4, 1), 1.1, { noTop: true }); }],
+    openTriBox: ['뚜껑 없는 삼각 상자', false, WHY.open, function () { return extrude(regular(3, 1.1), 1.1, { noTop: true }); }],
+    plane5: ['평면 오각형', false, WHY.flat, function () { return plane(5); }],
+    plane6: ['평면 육각형', false, WHY.flat, function () { return plane(6); }]
+  };
+  var MESH = {};
+  function mesh(key) { if (!MESH[key]) { var m = SH[key][3](); m.open = !!m.open; MESH[key] = finish(m); } return MESH[key]; }
+  // ---------- 그리기 ----------
+  var LIGHT = (function () { var l = [-0.35, 0.6, 0.72], s = Math.hypot(l[0], l[1], l[2]); return [l[0] / s, l[1] / s, l[2] / s]; })();
+  function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function fit(cv) {
+    var b = cv.getBoundingClientRect();
+    if (b.width < 2 || b.height < 2) return false;
+    if (b.width !== cv._w || b.height !== cv._h) { cv._w = b.width; cv._h = b.height; cv._d = Math.min(3, window.devicePixelRatio || 1); cv.width = Math.round(cv._w * cv._d); cv.height = Math.round(cv._h * cv._d); }
+    return true;
+  }
+  function render(cv, M, yaw, pitch, frac, lw, col) {
+    var ctx = cv.getContext('2d'), W = cv._w, H = cv._h, d = cv._d;
+    ctx.setTransform(d, 0, 0, d, 0, 0); ctx.clearRect(0, 0, W, H);
+    var cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch), sc = Math.min(W, H) * frac / M.R, ox = W / 2, oy = H / 2;
+    function rot(x, y, z) { var x1 = x * cy + z * sy, z1 = -x * sy + z * cy; return [x1, y * cp - z1 * sp, y * sp + z1 * cp]; }
+    var P = M.V.map(function (v) { var r = rot(v[0] - M.c[0], v[1] - M.c[1], v[2] - M.c[2]); return { x: ox + r[0] * sc, y: oy - r[1] * sc, z: r[2] }; });
+    var NN = M.N.map(function (n) { return rot(n[0], n[1], n[2]); });
+    var front = NN.map(function (n) { return n[2] > 0; }), order = [];
+    M.F.forEach(function (f, i) { if (M.open || front[i]) { var z = 0; f.forEach(function (k) { z += P[k].z; }); order.push([z / f.length, i]); } });
+    order.sort(function (a, b) { return a[0] - b[0]; });   // 먼 면부터 칠한다
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    order.forEach(function (o) {
+      var i = o[1], f = M.F[i], n = NN[i], back = !front[i], sg = back ? -1 : 1;
+      var lam = Math.max(0, sg * (n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2])), k = (0.55 + 0.5 * lam) * (back ? 0.72 : 1);
+      var fill = 'rgb(' + ((M.tint && M.tint[i]) ? col.alt : col.base).map(function (c) { return Math.min(255, Math.round(c * k)); }).join(',') + ')';
+      ctx.beginPath(); f.forEach(function (v, j) { j ? ctx.lineTo(P[v].x, P[v].y) : ctx.moveTo(P[v].x, P[v].y); }); ctx.closePath();
+      ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = fill; ctx.lineWidth = 1; ctx.stroke();   // 곡면 조각 사이 틈 메우기
+      ctx.beginPath();
+      M.FE[i].forEach(function (ei) {
+        var e = M.E[ei];
+        if (e.sharp || (!M.open && e.f.some(function (g) { return !front[g]; }))) { ctx.moveTo(P[e.a].x, P[e.a].y); ctx.lineTo(P[e.b].x, P[e.b].y); }
+      });
+      ctx.strokeStyle = col.fg; ctx.lineWidth = lw; ctx.stroke();
+    });
+    function scr(p) { var r = rot(p[0] - M.c[0], p[1] - M.c[1], p[2] - M.c[2]); return [ox + r[0] * sc, oy - r[1] * sc]; }
+    (M.glass || []).forEach(function (g) {   // 자르는 칼날(반투명 판)
+      ctx.beginPath(); g.forEach(function (p, j) { var q = scr(p); j ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }); ctx.closePath();
+      ctx.globalAlpha = 0.3; ctx.fillStyle = col.glass; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = col.glass; ctx.lineWidth = 2; ctx.stroke();
+    });
+    if (M.extra) {   // 옆 모서리를 늘린 점선
+      ctx.setLineDash([6, 6]); ctx.strokeStyle = col.fg; ctx.lineWidth = Math.max(1.5, lw * 0.6); ctx.beginPath();
+      M.extra.forEach(function (s) { var a = scr(s[0]), b = scr(s[1]); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); });
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+  }
+  function colors() { return { base: css('--poly3d').split(',').map(Number), alt: css('--poly3d-alt').split(',').map(Number), glass: css('--edge'), fg: css('--fg') }; }
+
+  // ---------- 활동 1 흐름 ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var BOARD = { yes: ['cube', 'triPrism', 'sqPyr', 'house'], no: ['cylinder', 'cone', 'sphere', 'hemisphere'] };
+  var GUESS = ['halfCyl', 'sqFrustum', 'coneFrustum', 'lPrism', 'openBox', 'octa'];
+  var DEFINE = [
+    { key: 'plane5', chip: 'solid', intro: '이 도형의 면은 오각형 하나예요. 면이 다각형인데 왜 다면체가 아닐까요?', choices: [
+      ['두께가 없는 평면도형이라서', true, '맞아요! 다면체는 공간을 차지하는 입체도형이어야 해요.'],
+      ['오각형이라서', false, '오각기둥의 밑면도 오각형인데 다면체예요. 도형을 옆에서 보이게 돌려 보세요.'],
+      ['면이 너무 커서', false, '크기는 상관없어요. 도형을 옆에서 보이게 돌려 보세요.']] },
+    { key: 'cylinder', chip: 'poly', intro: '원기둥은 입체도형이에요. 그런데 왜 다면체가 아닐까요?', choices: [
+      ['굽은 면(곡면)이 있어서', true, '맞아요! 다면체의 면은 모두 평평한 다각형이어야 해요.'],
+      ['꼭짓점이 없어서', false, '원뿔은 꼭짓점이 있는데도 다면체가 아니었죠? 다른 이유를 찾아봐요.'],
+      ['키가 커서', false, '직육면체도 길쭉하게 만들 수 있어요. 크기나 비율은 상관없어요.']] },
+    { key: 'openBox', chip: 'closed', intro: '면이 모두 사각형인 입체예요. 그런데 왜 다면체가 아닐까요?', choices: [
+      ['위가 뚫려 있어서', true, '맞아요! 다면체는 다각형인 면으로 빈틈없이 둘러싸여 있어야 해요.'],
+      ['면이 5개라서', false, '사각뿔도 면이 5개인데 다면체예요. 도형의 위쪽을 잘 보세요.'],
+      ['모서리가 많아서', false, '육각기둥은 모서리가 18개나 되어도 다면체예요. 위에서 내려다보세요.']] }
+  ];
+  var SORT = ['cuboidFlat', 'hexPrism', 'pentPyr', 'oddTet', 'obliquePrism', 'stairPrism', 'starPrism', 'triFrustum', 'hexPyr', 'triPrismLying', 'pentPrism', 'crossPrism',
+              'capsule', 'cone', 'hemisphere', 'cylinderLying', 'openTriBox', 'plane6', 'coneFrustum', 'sphere'];
+  var CHIPS = [['poly', '다각형인 면으로만', '원기둥 ✕'], ['closed', '둘러싸인', '뚜껑 없는 상자 ✕'], ['solid', '입체도형', '평면 오각형 ✕']];
+  var A = { phase: 'look', i: 0, key: null, answered: false, unlocked: {}, order: [], score: 0, wrongs: [], yaw: 0.6, pitch: 0.42, spin: true };
+  var tiles = [];
+
+  function buildBoard() {
+    [['yes', '다면체예요 ○'], ['no', '다면체가 아니에요 ✕']].forEach(function (g) {
+      var box = document.createElement('div'); box.className = 'grp ' + g[0];
+      box.innerHTML = '<h2>' + g[1] + '</h2>';
+      var grid = document.createElement('div'); grid.className = 'tiles';
+      BOARD[g[0]].forEach(function (key, n) {
+        var t = document.createElement('div'); t.className = 'tile';
+        var c = document.createElement('canvas'); c.setAttribute('role', 'img'); c.setAttribute('aria-label', SH[key][0]);
+        var s = document.createElement('span'); s.textContent = SH[key][0];
+        t.appendChild(c); t.appendChild(s); grid.appendChild(t);
+        tiles.push({ cv: c, key: key, yaw: 0.4 + n * 1.3, pitch: 0.42 });
+      });
+      box.appendChild(grid); $('a1board').appendChild(box);
+    });
+  }
+  function load(key) {
+    A.key = key; A.answered = false; A.yaw = 0.6; A.pitch = mesh(key).open ? 0.62 : 0.42; A.spin = true;
+    $('a1stamp').hidden = true; $('a1name').hidden = true;
+  }
+  function say(t, cls, sub) {
+    var el = $('a1msg'); el.className = cls || ''; el.textContent = '';
+    if (!t) return;
+    if (sub === undefined) { var mm = /^(.+?[.!?])\s+(.+)$/.exec(t); if (mm) { t = mm[1]; sub = mm[2]; } }   // 첫 문장은 굵게, 나머지는 작게
+    var b = document.createElement('b'); b.textContent = t; el.appendChild(b);
+    if (sub) { var s = document.createElement('span'); s.className = 'sub'; s.textContent = sub; el.appendChild(s); }
+  }
+  function anim(el, c) { el.classList.remove(c); void el.offsetWidth; el.classList.add(c); }
+  function setNext(label) { var b = $('a1next'); b.hidden = !label; if (label) b.textContent = label; }
+  function stamp() {
+    var s = SH[A.key], el = $('a1stamp');
+    el.hidden = false; el.className = s[1] ? 'yes' : 'no'; el.textContent = s[1] ? '다면체 ○' : '다면체가 아니에요 ✕';
+    anim(el, 'pop');
+    $('a1name').hidden = false; $('a1name').textContent = SH[A.key][0];
+  }
+  function renderDef(big, pop) {
+    var el = $('a1def'); el.hidden = false; el.className = big ? 'big' : '';
+    el.innerHTML = '<div>' + CHIPS.map(function (c) {
+      var on = A.unlocked[c[0]];
+      return '<span class="chipw"><span class="chip ' + c[0] + (on ? ' on' : '') + (pop === c[0] ? ' pop' : '') + '">' + (on ? c[1] : '？？？') + '</span>' + (big ? '<small>' + c[2] + '</small>' : '') + '</span>';
+    }).join(' ') + ' <span class="chipw"><span>을 다면체라고 해요.</span></span></div>';
+  }
+  function oxButtons() {
+    var box = $('a1choices'); box.innerHTML = '';
+    [[true, '다면체예요 ○'], [false, '다면체가 아니에요 ✕']].forEach(function (o) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pick'; b.textContent = o[1];
+      b.addEventListener('click', function () { answer(o[0], b); });
+      box.appendChild(b);
+    });
+  }
+  function answer(v, btn) {
+    if (A.answered) return; A.answered = true;
+    var s = SH[A.key], ok = v === s[1];
+    Array.prototype.forEach.call($('a1choices').children, function (b) { b.disabled = true; });
+    btn.classList.add('sel'); btn.disabled = false;
+    stamp();
+    say((ok ? '맞아요! ' : '아쉬워요. 이 도형은 ') + (s[1] ? '다면체예요.' : '다면체가 아니에요.'), ok ? 'good' : 'bad', s[2]);
+    if (!ok) anim(btn, 'shake');
+    if (A.phase === 'sort') { if (ok) A.score++; else A.wrongs.push(A.key); A.res.push({ key: A.key, ok: ok }); }
+    var last = A.phase === 'guess' ? A.i === GUESS.length - 1 : A.i === A.order.length - 1;
+    setNext(last ? (A.phase === 'guess' ? '다면체의 뜻 알아보기' : '결과 보기') : '다음');
+  }
+  function reasonButtons(d) {
+    var box = $('a1choices'); box.innerHTML = '';
+    d.choices.forEach(function (c) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pick'; b.textContent = c[0];
+      b.addEventListener('click', function () {
+        if (A.answered) return;
+        if (c[1]) {
+          A.answered = true; A.unlocked[d.chip] = true; renderDef(false, d.chip);
+          Array.prototype.forEach.call(box.children, function (x) { x.disabled = true; });
+          b.classList.add('sel'); b.disabled = false; stamp(); say(c[2], 'good');
+          setNext(A.i === DEFINE.length - 1 ? '다면체의 뜻 완성!' : '다음');
+        } else { b.classList.add('wrong'); b.disabled = true; anim(b, 'shake'); say(c[2], 'bad'); }
+      });
+      box.appendChild(b);
+    });
+  }
+  function show() {
+    var ph = A.phase;
+    ['a1board', 'a1stage', 'a1def', 'a1result'].forEach(function (id) { $(id).hidden = true; });
+    $('a1choices').innerHTML = ''; $('a1top').hidden = ph === 'done'; $('a1bar').hidden = ph === 'done';
+    say(''); setNext(null); steps();
+    if (ph === 'look') {
+      $('a1prog').textContent = '1단계 · 살펴보기';
+      $('a1task').textContent = '다면체와 다면체가 아닌 도형을 살펴보세요';
+      $('a1board').hidden = false;
+      say('두 묶음은 무엇이 다를까요? 도형을 잘 보고 짝과 이야기해 보세요.');
+      setNext('맞혀 보러 가기');
+    } else if (ph === 'guess') {
+      $('a1prog').textContent = '2단계 · 맞혀 보기 ' + (A.i + 1) + ' / ' + GUESS.length;
+      $('a1task').textContent = '이 도형은 다면체일까요?';
+      load(GUESS[A.i]); $('a1stage').hidden = false; oxButtons();
+      say('도형을 돌려 보며 모든 면을 살펴보세요.');
+    } else if (ph === 'define') {
+      var d = DEFINE[A.i];
+      $('a1prog').textContent = '3단계 · 뜻 만들기 ' + (A.i + 1) + ' / ' + DEFINE.length;
+      $('a1task').textContent = '다면체가 아니에요. 왜 그럴까요?';
+      load(d.key); renderDef(false); $('a1stage').hidden = false; reasonButtons(d); say(d.intro);
+    } else if (ph === 'defined') {
+      $('a1prog').textContent = '3단계 · 뜻 만들기';
+      $('a1task').textContent = '다면체의 뜻';
+      renderDef(true);
+      say('아래 작은 글씨는 각 부분이 걸러 낸 도형이에요. 이제 이 뜻으로 도형 20개를 판단해 봐요.');
+      setNext('분류하러 가기');
+    } else if (ph === 'sort') {
+      $('a1prog').textContent = '4단계 · 분류하기 ' + (A.i + 1) + ' / ' + A.order.length;
+      $('a1task').textContent = '다면체일까요? 뜻을 떠올리며 판단해요';
+      renderDef(false); load(A.order[A.i]); $('a1stage').hidden = false; oxButtons();
+    } else {
+      var r = $('a1result'); r.hidden = false;
+      var nYes = SORT.filter(function (k) { return SH[k][1]; }).length;
+      r.innerHTML = '<h2>' + A.order.length + '개 중 ' + A.score + '개 맞혔어요!</h2>' +
+        '<p>다면체 ' + nYes + '개, 다면체가 아닌 도형 ' + (SORT.length - nYes) + '개가 섞여 있었어요. 선생님께 이 화면을 보여 주세요.</p>' +
+        '<div class="rgrid">' + A.res.map(function (r, k) { return '<div class="rcell ' + (r.ok ? 'ok' : 'no') + '"><canvas id="a1r' + k + '"></canvas><b>' + (r.ok ? '✓' : '✕') + '</b><span>' + SH[r.key][0] + '</span></div>'; }).join('') + '</div>' +
+        (A.wrongs.length
+          ? '<div class="wrongs"><b>다시 볼 도형 ' + A.wrongs.length + '개</b><ul>' + A.wrongs.map(function (k) { return '<li><b>' + SH[k][0] + '</b>: 다면체' + (SH[k][1] ? '예요. ' : '가 아니에요. ') + SH[k][2] + '</li>'; }).join('') + '</ul></div>'
+          : '<div class="wrongs clean">하나도 틀리지 않았어요!</div>') +
+        '<div class="row"><button type="button" id="a1again">처음부터 다시</button><button type="button" id="a1go2" class="primary">활동 2: 각기둥·각뿔·각뿔대 →</button></div>';
+      $('a1again').addEventListener('click', function () { A.phase = 'look'; A.i = 0; A.unlocked = {}; show(); });
+      $('a1go2').addEventListener('click', function () { showAct(2); });
+      drawThumbs();
+    }
+  }
+  function steps() {
+    var L = ['살펴보기', '맞혀 보기', '뜻 만들기', '분류하기'], ph = A.phase;
+    var cur = { look: 0, guess: 1, define: 2, defined: 2, sort: 3, done: 4 }[ph];
+    var frac = ph === 'guess' ? A.i / GUESS.length : ph === 'define' ? A.i / DEFINE.length : ph === 'sort' ? A.i / A.order.length : ph === 'look' ? 0 : 1;
+    $('a1steps').innerHTML = L.map(function (t, k) { return '<li class="' + (k < cur ? 'done' : k === cur ? 'on' : '') + '">' + t + '</li>'; }).join('');
+    $('a1pbar').style.width = Math.round(Math.min(1, (Math.min(cur, 3) + frac) / 4) * 100) + '%';
+  }
+  function drawThumbs() {
+    requestAnimationFrame(function () { var col = colors(); (A.res || []).forEach(function (r, k) { var c = $('a1r' + k); if (c && fit(c)) render(c, mesh(r.key), 0.6, 0.42, 0.42, 1.8, col); }); });
+  }
+  window.addEventListener('resize', function () { if (A.phase === 'done') drawThumbs(); });
+  function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  $('a1next').addEventListener('click', function () {
+    if (A.phase === 'look') { A.phase = 'guess'; A.i = 0; }
+    else if (A.phase === 'guess') { if (++A.i >= GUESS.length) { A.phase = 'define'; A.i = 0; } }
+    else if (A.phase === 'define') { if (++A.i >= DEFINE.length) A.phase = 'defined'; }
+    else if (A.phase === 'defined') { A.phase = 'sort'; A.i = 0; A.order = shuffle(SORT); A.score = 0; A.wrongs = []; A.res = []; }
+    else if (A.phase === 'sort') { if (++A.i >= A.order.length) A.phase = 'done'; }
+    show();
+  });
+
+  // 손가락으로 밀어 돌리기
+  var stage = $('a1stage'), drag = null;
+  stage.addEventListener('pointerdown', function (e) { stage.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, yaw: A.yaw, pitch: A.pitch }; A.spin = false; });
+  stage.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    A.yaw = drag.yaw + (e.clientX - drag.x) * 0.01; A.pitch = Math.max(-1.45, Math.min(1.45, drag.pitch + (e.clientY - drag.y) * 0.01));
+  });
+  stage.addEventListener('pointerup', function () { drag = null; });
+  stage.addEventListener('pointercancel', function () { drag = null; });
+
+  var last = 0;
+  function loop(t) {
+    var dt = Math.min(50, t - (last || t)); last = t;
+    if (!$('act1').hidden) {
+      var col = colors();
+      if (!$('a1board').hidden) tiles.forEach(function (tl) { tl.yaw += dt * 0.0007; if (fit(tl.cv)) render(tl.cv, mesh(tl.key), tl.yaw, tl.pitch, 0.43, 2, col); });
+      if (!$('a1stage').hidden && A.key) { if (A.spin) A.yaw += dt * 0.0005; var cv = $('a1cv'); if (fit(cv)) render(cv, mesh(A.key), A.yaw, A.pitch, 0.45, 3, col); }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- 활동 바꾸기 ----------
+  var countStarted = false, countView = 'play';
+  function showAct(n) {
+    Array.prototype.forEach.call(document.querySelectorAll('#acts .tab'), function (b) { b.classList.toggle('on', b.dataset.act === String(n)); });
+    if (!$('play').hidden) countView = 'play'; else if (!$('result').hidden) countView = 'result';
+    $('play').hidden = true; $('result').hidden = true;
+    $('act1').hidden = n !== 1; $('act2').hidden = n !== 2;
+    if (n === 3) { if (!countStarted) { countStarted = true; window.__count.start(); } else $(countView).hidden = false; }
+    window.scrollTo(0, 0);
+  }
+  window.__showAct = showAct;
+  window.__geo = { SH: SH, mesh: mesh, finish: finish, extrude: extrude, regular: regular, convex: convex, render: render, fit: fit, colors: colors };
+  Array.prototype.forEach.call(document.querySelectorAll('#acts .tab'), function (b) { b.addEventListener('click', function () { showAct(Number(b.dataset.act)); }); });
+
+  buildBoard(); show(); requestAnimationFrame(loop);
+})();
+</script>
+
+<script>
+(function () {
+  var G = window.__geo; if (!G) return;
+  var $ = function (id) { return document.getElementById(id); };
+  var NAMES = { 3: '삼각', 4: '사각', 5: '오각', 6: '육각' };
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function norm(a) { var l = Math.hypot(a[0], a[1], a[2]); return [a[0] / l, a[1] / l, a[2] / l]; }
+  function lerp(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+
+  // 볼록한 도형을 평면 n·v = d 로 잘라 n·v <= d 쪽만 남긴다
+  function clip(m, n, d) {
+    var polys = [], cap = [], eps = 1e-9;
+    m.F.forEach(function (f) {
+      var pts = f.map(function (k) { return m.V[k]; }), out = [];
+      for (var i = 0; i < pts.length; i++) {
+        var a = pts[i], b = pts[(i + 1) % pts.length], da = dot(n, a) - d, db = dot(n, b) - d;
+        if (da <= eps) { out.push(a); if (da > -1e-6) cap.push(a); }
+        if ((da < -eps && db > eps) || (da > eps && db < -eps)) { var p = lerp(a, b, da / (da - db)); out.push(p); cap.push(p); }
+      }
+      if (out.length >= 3) polys.push(out);
+    });
+    var seen = {}, uniq = [];
+    cap.forEach(function (p) { var k = p.map(function (x) { return Math.round(x * 1e5); }).join(','); if (!seen[k]) { seen[k] = 1; uniq.push(p); } });
+    if (uniq.length >= 3) {
+      var c = [0, 0, 0]; uniq.forEach(function (p) { c[0] += p[0] / uniq.length; c[1] += p[1] / uniq.length; c[2] += p[2] / uniq.length; });
+      var u = norm(cross(n, Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0])), w = cross(n, u);
+      uniq.sort(function (p, q) { var a = [p[0] - c[0], p[1] - c[1], p[2] - c[2]], b = [q[0] - c[0], q[1] - c[1], q[2] - c[2]]; return Math.atan2(dot(a, w), dot(a, u)) - Math.atan2(dot(b, w), dot(b, u)); });
+      polys.push(uniq);
+    }
+    var V = [], idx = {};
+    var F = polys.map(function (poly) {
+      var f = [];
+      poly.forEach(function (p) { var k = p.map(function (x) { return Math.round(x * 1e5); }).join(','); if (idx[k] === undefined) { idx[k] = V.length; V.push(p); } if (f[f.length - 1] !== idx[k]) f.push(idx[k]); });
+      if (f.length > 1 && f[0] === f[f.length - 1]) f.pop();
+      return f;
+    }).filter(function (f) { return f.length >= 3; });
+    return G.convex(V, F);
+  }
+  function merge(parts) {
+    var V = [], F = [], tint = [];
+    parts.forEach(function (pt) {
+      var o = pt.off || [0, 0, 0], base = V.length;
+      pt.m.V.forEach(function (v) { V.push([v[0] + o[0], v[1] + o[1], v[2] + o[2]]); });
+      pt.m.F.forEach(function (f) { F.push(f.map(function (k) { return k + base; })); tint.push(!!pt.tint); });
+    });
+    var M = G.finish({ V: V, F: F, open: false }); M.tint = tint; return M;
+  }
+  function pyramid(n) { return G.extrude(G.regular(n, 1), 1.8, { top: 0 }); }
+  function glass(n, c, s) {
+    var u = norm(cross(n, [0, 0, 1])), w = cross(n, u);
+    return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(function (q) { return [c[0] + (u[0] * q[0] + w[0] * q[1]) * s, c[1] + (u[1] * q[0] + w[1] * q[1]) * s, c[2] + (u[2] * q[0] + w[2] * q[1]) * s]; });
+  }
+  // 뿔대의 옆 모서리를 늘린 점선 (윗꼭짓점 → 늘린 끝)
+  function ext(m, n, k) { var L = []; for (var i = 0; i < n; i++) { var b = m.V[i], t = m.V[n + i]; L.push([t, lerp(b, t, k)]); } return L; }
+  var SLANT = norm([0.55, 1, 0.15]);
+
+  // ---------- 네 칸 분류할 도형 ----------
+  var CAT = ['각기둥', '각뿔', '각뿔대', '셋 다 아니에요'];
+  var VERD = ['각기둥이에요.', '각뿔이에요.', '각뿔대예요.', '셋 다 아니에요.'];
+  var WHY = [
+    '두 밑면이 평행하고 합동인 다각형이고, 옆면이 모두 직사각형이에요.',
+    '밑면이 다각형이고, 옆면이 모두 한 꼭짓점에서 만나는 삼각형이에요.',
+    '두 밑면이 평행하고 옆면이 모두 사다리꼴이에요. 옆 모서리를 늘리면(점선) 한 점에서 만나요.'
+  ];
+  function fr(n, r, h, s) { return function () { var m = G.extrude(G.regular(n, r), h, { top: s }); var M = G.finish(m); M.extra = ext(m, n, 1 / (1 - s)); return M; }; }
+  function fromSH(k) { return function () { return G.finish(G.SH[k][3]()); }; }
+  var ITEMS = [
+    { name: '삼각기둥', cat: 0, why: WHY[0], make: fromSH('triPrism') },
+    { name: '육각기둥', cat: 0, why: WHY[0], make: fromSH('hexPrism') },
+    { name: '사각기둥 (직육면체)', cat: 0, why: WHY[0], make: fromSH('cuboidFlat') },
+    { name: '누운 삼각기둥', cat: 0, why: '눕혀 놓아도 두 밑면이 평행하고 합동이며, 옆면이 직사각형이에요.', make: fromSH('triPrismLying') },
+    { name: '사각뿔', cat: 1, why: WHY[1], make: fromSH('sqPyr') },
+    { name: '오각뿔', cat: 1, why: WHY[1], make: fromSH('pentPyr') },
+    { name: '육각뿔', cat: 1, why: WHY[1], make: fromSH('hexPyr') },
+    { name: '삐뚤빼뚤한 삼각뿔', cat: 1, why: '모양이 삐뚤어도 밑면은 삼각형이고, 옆면은 한 점에서 만나는 삼각형이에요.', make: fromSH('oddTet') },
+    { name: '삼각뿔대', cat: 2, why: WHY[2], make: fr(3, 1.1, 1.1, 0.45) },
+    { name: '사각뿔대', cat: 2, why: WHY[2], make: fr(4, 1, 1.2, 0.5) },
+    { name: '오각뿔대', cat: 2, why: WHY[2], make: fr(5, 1, 1.1, 0.55) },
+    { name: '육각뿔대', cat: 2, why: WHY[2], make: fr(6, 1, 1.0, 0.5) },
+    { name: '기울어진 육면체', cat: 3, why: '두 밑면은 평행하고 합동이지만, 옆면이 직사각형이 아니에요. 그래서 각기둥이 아니에요.', make: fromSH('obliquePrism') },
+    { name: '비스듬히 자른 사각뿔', cat: 3, why: '각뿔을 비스듬히 잘라서 두 밑면이 평행하지 않아요. 그래서 각뿔대가 아니에요.', make: function () {
+      var P = pyramid(4), M = G.finish(clip(P, SLANT, dot(SLANT, [0, 0.05, 0])));
+      M.extra = P.V.slice(0, 4).map(function (v) { return [v, P.V[4]]; }); return M;
+    } },
+    { name: '윗면을 돌려 놓은 도형', cat: 3, why: '위아래에 면이 있지만 옆면이 삼각형 8개예요. 옆면이 직사각형도 사다리꼴도 아니라서 셋 다 아니에요.', make: function () {
+      var V = [], F = [], i;
+      for (i = 0; i < 4; i++) { var a = Math.PI / 4 + i * Math.PI / 2; V.push([Math.cos(a), -0.6, Math.sin(a)]); }
+      for (i = 0; i < 4; i++) { var b = i * Math.PI / 2; V.push([0.85 * Math.cos(b), 0.6, 0.85 * Math.sin(b)]); }
+      F.push([0, 1, 2, 3]); F.push([4, 5, 6, 7]);
+      for (i = 0; i < 4; i++) { var j = (i + 1) % 4; F.push([i, j, 4 + j]); F.push([4 + i, 4 + j, i]); }
+      return G.finish(G.convex(V, F));
+    } },
+    { name: '뿔대처럼 생긴 도형', cat: 3, why: '옆면은 사다리꼴이지만, 옆 모서리를 늘려도(점선) 한 점에서 만나지 않아요. 각뿔을 잘라서는 만들 수 없는 모양이에요.', make: function () {
+      var b = [[-1.2, -0.8], [1.2, -0.8], [1.2, 0.8], [-1.2, 0.8]], V = [];
+      b.forEach(function (p) { V.push([p[0], -0.55, p[1]]); });
+      b.forEach(function (p) { V.push([p[0] * 0.7, 0.55, p[1] * 0.25]); });
+      var F = [[0, 1, 2, 3], [4, 5, 6, 7]];
+      for (var i = 0; i < 4; i++) { var j = (i + 1) % 4; F.push([i, j, 4 + j, 4 + i]); }
+      var M = G.finish(G.convex(V, F)); M.extra = ext({ V: V }, 4, 2.4); return M;
+    } },
+    { name: '원뿔', cat: 3, why: '밑면이 원이고 옆면이 굽은 면이에요. 다면체가 아니니 각뿔도 아니에요.', make: fromSH('cone') },
+    { name: '원뿔대', cat: 3, why: '원뿔을 자른 도형이에요. 밑면이 원이라서 각뿔대가 아니에요.', make: fromSH('coneFrustum') }
+  ];
+
+  var B = { phase: 'cut', n: 4, t: 0.05, cut: false, sep: 0, t0: 0, s: 0.5, seen: {}, i: 0, order: [], score: 0, wrongs: [], item: null, answered: false, M: null, extraLater: null, yaw: 0.6, pitch: 0.38, spin: true };
+
+  function say(t, cls, sub) {
+    var el = $('a2msg'); el.className = cls || ''; el.textContent = '';
+    if (!t) return;
+    if (sub === undefined) { var mm = /^(.+?[.!?])\s+(.+)$/.exec(t); if (mm) { t = mm[1]; sub = mm[2]; } }   // 첫 문장은 굵게, 나머지는 작게
+    var b = document.createElement('b'); b.textContent = t; el.appendChild(b);
+    if (sub) { var s = document.createElement('span'); s.className = 'sub'; s.textContent = sub; el.appendChild(s); }
+  }
+  function anim(el, c) { el.classList.remove(c); void el.offsetWidth; el.classList.add(c); }
+  function setNext(label) { var b = $('a2next'); b.hidden = !label; if (label) b.textContent = label; }
+  function nameTag(t) { var el = $('a2name'); el.hidden = !t; el.textContent = t || ''; }
+  function stampTag(t, cls) { var el = $('a2stamp'); el.hidden = !t; el.textContent = t || ''; el.className = cls || ''; if (t) anim(el, 'pop'); }
+  function def(html) { var el = $('a2def'); el.hidden = !html; el.innerHTML = html || ''; }
+  var DEF_CUT = '<div class="a2d">각뿔을 <b>밑면에 평행한 평면</b>으로 자를 때 생기는 두 입체도형 중에서 각뿔이 아닌 쪽을 <b class="c-edge">각뿔대</b>라고 해요.</div><div class="a2s">두 밑면: 서로 평행 · 옆면: 모두 사다리꼴</div>';
+  var DEF_SORT = '<div class="a2s"><b class="c-vertex">각기둥</b> 두 밑면이 평행·합동, 옆면은 직사각형 &nbsp;·&nbsp; <b class="c-face">각뿔</b> 옆면이 한 점에서 만나는 삼각형 &nbsp;·&nbsp; <b class="c-edge">각뿔대</b> 두 밑면이 평행, 옆면은 사다리꼴</div>';
+  function defSeen() {
+    var L = [['solid', '각기둥', 'prism'], ['closed', '각뿔대', 'frustum'], ['poly', '각뿔', 'pyramid']];
+    def('<div class="a2d">만들어 본 도형: ' + L.map(function (c) { var on = B.seen[c[2]]; return '<span class="chip ' + c[0] + (on ? ' on' : '') + '">' + c[1] + (on ? ' ✓' : '') + '</span>'; }).join(' ') + '</div>');
+  }
+
+  function baseRow(onPick) {
+    var row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = '<span class="lab">밑면</span>';
+    [3, 4, 5, 6].forEach(function (n) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pick mini' + (B.n === n ? ' sel' : ''); b.textContent = NAMES[n] + '형';
+      b.addEventListener('click', function () { B.n = n; Array.prototype.forEach.call(row.querySelectorAll('button'), function (x) { x.classList.toggle('sel', x === b); }); onPick(); });
+      row.appendChild(b);
+    });
+    return row;
+  }
+  function sliderRow(label, min, max, val, onInput) {
+    var row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = '<span class="lab">' + label + '</span>';
+    var r = document.createElement('input'); r.type = 'range'; r.min = min; r.max = max; r.value = val; r.setAttribute('aria-label', label);
+    r.addEventListener('input', function () { onInput(Number(r.value)); });
+    row.appendChild(r); return row;
+  }
+
+  // ---------- 1단계: 자르기 ----------
+  function cutUI() {
+    var slant = B.phase === 'slant', box = $('a2ctrl'); box.innerHTML = '';
+    box.appendChild(baseRow(rejoin));
+    box.appendChild(sliderRow('자르는 높이', -50, 55, Math.round(B.t * 100), function (v) { B.t = v / 100; rejoin(); }));
+    var row = document.createElement('div'); row.className = 'row';
+    var b = document.createElement('button'); b.type = 'button'; b.id = 'a2cut'; b.className = 'primary';
+    b.textContent = slant ? '비스듬히 자르기 ✂' : '평행하게 자르기 ✂';
+    b.addEventListener('click', function () { if (B.cut) rejoin(); else doCut(); });
+    row.appendChild(b); box.appendChild(row);
+  }
+  function rejoin() {
+    if (!B.cut) return;
+    B.cut = false; B.sep = 0; nameTag(''); stampTag('');
+    $('a2cut').textContent = B.phase === 'slant' ? '비스듬히 자르기 ✂' : '평행하게 자르기 ✂';
+    say(B.phase === 'slant' ? '이번 칼날은 밑면과 평행하지 않아요. 잘라서 아래 조각을 살펴보세요.' : '높이를 정하고 자르기를 누르세요. 칼날(반투명 판)은 늘 밑면과 평행해요.');
+  }
+  function doCut() {
+    B.cut = true; B.t0 = performance.now(); $('a2cut').textContent = '다시 붙이기';
+    var pyr = NAMES[B.n] + '뿔', fr2 = NAMES[B.n] + '뿔대';
+    if (B.phase === 'cut') {
+      nameTag('아래 조각: ' + fr2); stampTag('각뿔대 ○', 'yes');
+      say('주황 조각은 작은 ' + pyr + ', 파란 조각이 ' + fr2 + '예요. 아래 조각을 돌려 보며 두 밑면과 옆면을 살펴보세요.', 'good');
+      def(DEF_CUT); setNext('비스듬히 자르면?');
+    } else {
+      nameTag('아래 조각'); stampTag('각뿔대가 아니에요 ✕', 'no');
+      say('아래 조각은 윗면과 아랫면이 평행하지 않아요. 그래서 각뿔대가 아니에요. 각뿔대는 꼭 밑면에 평행하게 잘라야 해요.', 'bad');
+      setNext('윗면 크기 바꿔 보기');
+    }
+  }
+  function cutMesh() {
+    var P = pyramid(B.n), n = B.phase === 'slant' ? SLANT : [0, 1, 0], c = [0, B.t, 0], d = dot(n, c), M;
+    if (!B.cut) { M = G.finish({ V: P.V, F: P.F, open: false }); M.glass = [glass(n, c, 1.25)]; }
+    else {
+      var k = Math.min(1, (performance.now() - B.t0) / 700); k = 1 - (1 - k) * (1 - k);
+      var off = [n[0] * 0.6 * k, n[1] * 0.6 * k, n[2] * 0.6 * k];
+      M = merge([{ m: clip(P, n, d) }, { m: clip(P, [-n[0], -n[1], -n[2]], -d), off: off, tint: true }]);
+    }
+    M.c = [0, 0.25, 0]; M.R = 1.6; return M;
+  }
+
+  // ---------- 2단계: 윗면 크기 ----------
+  function sliderMesh() {
+    var n = B.n, m = G.extrude(G.regular(n, 1), 1.6, { top: B.s }), M = G.finish(m);
+    if (B.s > 0 && B.s <= 0.55) M.extra = ext(m, n, 1 / (1 - B.s));   // 꼭짓점이 화면 안에 들어올 때만 점선
+    M.c = [0, 0.5, 0]; M.R = 1.9; return M;
+  }
+  function sliderUpdate() {
+    var kind = B.s >= 1 ? 'prism' : B.s <= 0 ? 'pyramid' : 'frustum', nm = NAMES[B.n] + (kind === 'prism' ? '기둥' : kind === 'pyramid' ? '뿔' : '뿔대');
+    B.seen[kind] = true; nameTag(nm); B.M = sliderMesh(); defSeen();
+    say(kind === 'prism' ? '윗면이 아랫면과 크기가 같아요 → 각기둥. 옆면은 직사각형이에요.'
+      : kind === 'pyramid' ? '윗면이 한 점으로 줄었어요 → 각뿔. 옆면은 삼각형이에요.'
+      : '윗면이 아랫면보다 작아요 → 각뿔대. 옆면은 사다리꼴이고, 옆 모서리를 늘리면 한 점에서 만나요.');
+    if (B.seen.prism && B.seen.pyramid && B.seen.frustum) setNext('네 칸 분류하러 가기');
+  }
+
+  // ---------- 3단계: 네 칸 분류 ----------
+  function sortButtons() {
+    var box = $('a2choices'); box.innerHTML = '';
+    CAT.forEach(function (c, ci) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'pick'; b.textContent = c;
+      b.addEventListener('click', function () {
+        if (B.answered) return; B.answered = true;
+        var it = B.item, ok = ci === it.cat;
+        Array.prototype.forEach.call(box.children, function (x) { x.disabled = true; });
+        b.classList.add('sel'); b.disabled = false;
+        if (ok) B.score++; else B.wrongs.push(it);
+        B.res.push({ it: it, ok: ok });
+        stampTag(it.cat === 3 ? '셋 다 아니에요 ✕' : CAT[it.cat] + ' ○', it.cat === 3 ? 'no' : 'yes'); nameTag(it.name);
+        if (B.extraLater) {   // 점선 끝까지 화면에 들어오게 다시 맞춘다
+          var M = B.M, pts = M.V.slice(); M.extra = B.extraLater; M.extra.forEach(function (s) { pts.push(s[1]); });
+          var lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+          pts.forEach(function (v) { for (var q = 0; q < 3; q++) { lo[q] = Math.min(lo[q], v[q]); hi[q] = Math.max(hi[q], v[q]); } });
+          M.c = [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2]; M.R = 0;
+          pts.forEach(function (v) { M.R = Math.max(M.R, Math.hypot(v[0] - M.c[0], v[1] - M.c[1], v[2] - M.c[2])); });
+        }
+        say((ok ? '맞아요! ' : '아쉬워요. 이 도형은 ') + VERD[it.cat], ok ? 'good' : 'bad', it.why);
+        if (!ok) anim(b, 'shake');
+        setNext(B.i === B.order.length - 1 ? '결과 보기' : '다음');
+      });
+      box.appendChild(b);
+    });
+  }
+  function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function steps() {
+    var L = ['자르기', '윗면 바꾸기', '네 칸 분류'], ph = B.phase;
+    var cur = { cut: 0, slant: 0, slider: 1, sort: 2, done: 3 }[ph];
+    var frac = ph === 'slant' ? 0.5 : ph === 'sort' ? B.i / B.order.length : ph === 'done' ? 1 : 0;
+    $('a2steps').innerHTML = L.map(function (t, k) { return '<li class="' + (k < cur ? 'done' : k === cur ? 'on' : '') + '">' + t + '</li>'; }).join('');
+    $('a2pbar').style.width = Math.round(Math.min(1, (Math.min(cur, 2) + frac) / 3) * 100) + '%';
+  }
+  function drawThumbs() {
+    requestAnimationFrame(function () { var col = G.colors(); (B.res || []).forEach(function (r, k) { var c = $('a2r' + k); if (!r.M) r.M = r.it.make(); if (c && G.fit(c)) G.render(c, r.M, 0.6, 0.4, 0.42, 1.8, col); }); });
+  }
+  window.addEventListener('resize', function () { if (B.phase === 'done') drawThumbs(); });
+
+  function show() {
+    var ph = B.phase;
+    $('a2stage').hidden = ph === 'done'; $('a2result').hidden = ph !== 'done';
+    $('a2top').hidden = ph === 'done'; $('a2bar').hidden = ph === 'done';
+    $('a2ctrl').innerHTML = ''; $('a2choices').innerHTML = ''; say(''); setNext(null); nameTag(''); stampTag('');
+    steps();
+    B.yaw = 0.6; B.spin = true; B.pitch = 0.38;
+    if (ph === 'cut' || ph === 'slant') {
+      B.cut = false; B.sep = 0;
+      $('a2prog').textContent = '1단계 · 각뿔 자르기';
+      $('a2task').textContent = ph === 'cut' ? '각뿔을 밑면에 평행하게 잘라 보세요' : '이번엔 비스듬히 잘라 볼까요?';
+      if (ph === 'cut') def(''); cutUI(); B.cut = true; rejoin();
+    } else if (ph === 'slider') {
+      $('a2prog').textContent = '2단계 · 윗면 크기 바꾸기';
+      $('a2task').textContent = '윗면 크기를 바꿔 각기둥, 각뿔대, 각뿔을 모두 만들어 보세요';
+      B.seen = {}; B.s = 0.5;
+      var box = $('a2ctrl');
+      box.appendChild(baseRow(sliderUpdate));
+      box.appendChild(sliderRow('윗면 크기', 0, 100, 50, function (v) { B.s = v / 100; sliderUpdate(); }));
+      sliderUpdate(); B.pitch = 0.45;
+    } else if (ph === 'sort') {
+      $('a2prog').textContent = '3단계 · 네 칸 분류 ' + (B.i + 1) + ' / ' + B.order.length;
+      $('a2task').textContent = '이 도형은 어느 칸에 들어갈까요?';
+      def(DEF_SORT);
+      B.item = B.order[B.i]; B.answered = false;
+      B.M = B.item.make(); B.extraLater = B.M.extra || null; B.M.extra = null;
+      sortButtons();
+    } else {
+      def('');
+      var r = $('a2result');
+      r.innerHTML = '<h2>' + B.order.length + '개 중 ' + B.score + '개 맞혔어요!</h2>' +
+        '<p>각기둥 4개, 각뿔 4개, 각뿔대 4개, 셋 다 아닌 도형 6개가 섞여 있었어요. 선생님께 이 화면을 보여 주세요.</p>' +
+        '<div class="rgrid">' + B.res.map(function (r, k) { return '<div class="rcell ' + (r.ok ? 'ok' : 'no') + '"><canvas id="a2r' + k + '"></canvas><b>' + (r.ok ? '✓' : '✕') + '</b><span>' + r.it.name + '</span></div>'; }).join('') + '</div>' +
+        (B.wrongs.length
+          ? '<div class="wrongs"><b>다시 볼 도형 ' + B.wrongs.length + '개</b><ul>' + B.wrongs.map(function (it) { return '<li><b>' + it.name + '</b> → ' + CAT[it.cat] + ': ' + it.why.replace('(점선)', '') + '</li>'; }).join('') + '</ul></div>'
+          : '<div class="wrongs clean">하나도 틀리지 않았어요!</div>') +
+        '<div class="row"><button type="button" id="a2again">처음부터 다시</button><button type="button" id="a2go3" class="primary">활동 3: 입체도형 세어 보기 →</button></div>';
+      $('a2again').addEventListener('click', function () { B.phase = 'cut'; show(); });
+      $('a2go3').addEventListener('click', function () { window.__showAct(3); });
+      drawThumbs();
+    }
+  }
+  $('a2next').addEventListener('click', function () {
+    if (B.phase === 'cut') B.phase = 'slant';
+    else if (B.phase === 'slant') B.phase = 'slider';
+    else if (B.phase === 'slider') { B.phase = 'sort'; B.i = 0; B.order = shuffle(ITEMS); B.score = 0; B.wrongs = []; B.res = []; }
+    else if (B.phase === 'sort') { if (++B.i >= B.order.length) B.phase = 'done'; }
+    show();
+  });
+
+  var stage = $('a2stage'), drag = null;
+  stage.addEventListener('pointerdown', function (e) { stage.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, yaw: B.yaw, pitch: B.pitch }; B.spin = false; });
+  stage.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    B.yaw = drag.yaw + (e.clientX - drag.x) * 0.01; B.pitch = Math.max(-1.45, Math.min(1.45, drag.pitch + (e.clientY - drag.y) * 0.01));
+  });
+  stage.addEventListener('pointerup', function () { drag = null; });
+  stage.addEventListener('pointercancel', function () { drag = null; });
+
+  var last = 0;
+  function loop(t) {
+    var dt = Math.min(50, t - (last || t)); last = t;
+    if (!$('act2').hidden && !$('a2stage').hidden) {
+      if (B.phase === 'cut' || B.phase === 'slant') B.M = cutMesh();
+      if (B.spin) B.yaw += dt * 0.0005;
+      var cv = $('a2cv');
+      if (B.M && G.fit(cv)) G.render(cv, B.M, B.yaw, B.pitch, 0.47, 3, G.colors());
+    }
+    requestAnimationFrame(loop);
+  }
+  show(); requestAnimationFrame(loop);
+})();
+</script>
+
+</body></html>
