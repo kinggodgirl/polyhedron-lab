@@ -215,6 +215,11 @@ button.pick.wrong { opacity: .45; }
 .steps li.done::before { content: '✓'; background: var(--ok); color: var(--btn-fg); }
 .steps li.on { color: var(--fg); border-color: var(--fg); font-weight: 700; }
 .steps li.on::before { background: var(--fg); color: var(--bg); }
+.steps li { cursor: pointer; user-select: none; }
+.steps li:hover { border-color: var(--edge); }
+.steps li:focus-visible { outline: 3px solid var(--edge); outline-offset: 2px; }
+.steps.nums li { padding: 3px; gap: 0; }
+.steps.nums li::before { width: 26px; height: 26px; }
 .pbar { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; flex: 0 0 auto; }
 .pbar i { display: block; height: 100%; width: 0; background: var(--edge); transition: width .3s; }
 #brand { font-family: var(--display); font-size: clamp(19px, 2.4vw, 24px); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
@@ -286,7 +291,7 @@ button.pick.wrong { opacity: .45; }
 </section>
 
 <section id="play" style="display:contents" hidden>
-  <div class="pbar"><i id="pbar3"></i></div>
+  <div class="stepwrap"><ol class="steps nums" id="steps3" aria-label="도형 고르기"></ol><div class="pbar"><i id="pbar3"></i></div></div>
   <div id="top">
     <h1 id="task"></h1>
     <span id="progress"></span>
@@ -469,6 +474,7 @@ button.pick.wrong { opacity: .45; }
     var s = SOLIDS[st.si], counting = st.step >= 1;
     $('progress').textContent = '도형 ' + (st.si + 1) + ' / ' + SOLIDS.length;
     $('pbar3').style.width = Math.round((st.si * 4 + st.step) / (SOLIDS.length * 4) * 100) + '%';
+    $('steps3').innerHTML = SOLIDS.map(function (x, k) { var r = st.results[k] || {}; return '<li role="button" tabindex="0" title="누르면 ' + (k + 1) + '번 도형으로 가요" data-k="' + k + '" class="' + (k === st.si ? 'on' : r.vertex ? 'done' : '') + '"></li>'; }).join('');
     $('choices').hidden = counting; $('reset').hidden = !counting; $('done').hidden = !counting; $('next').hidden = true;
     $('count').textContent = '';
     if (counting) {
@@ -583,6 +589,10 @@ button.pick.wrong { opacity: .45; }
   }
   stage.addEventListener('pointerup', endDrag); stage.addEventListener('pointercancel', function () { drag = null; });
 
+  // 도형 번호를 눌러 원하는 도형으로 바로 간다 (이름은 미리 보여 주지 않는다)
+  function jump3(k) { st.si = k; st.step = 0; st.sel = []; st.tries = 0; st.geo = build(SOLIDS[k]); st.yaw = 0.6; st.pitch = 0.38; showTask(); window.scrollTo(0, 0); }
+  $('steps3').addEventListener('click', function (e) { var li = e.target.closest('li'); if (li) jump3(Number(li.dataset.k)); });
+  $('steps3').addEventListener('keydown', function (e) { var li = e.target.closest('li'); if (li && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); jump3(Number(li.dataset.k)); } });
   $('reset').addEventListener('click', function () { st.sel = []; updateCount(); say(''); draw(); });
   $('done').addEventListener('click', onDone);
   $('next').addEventListener('click', onNext);
@@ -977,9 +987,24 @@ button.pick.wrong { opacity: .45; }
     var L = ['살펴보기', '맞혀 보기', '뜻 만들기', '분류하기'], ph = A.phase;
     var cur = { look: 0, guess: 1, define: 2, defined: 2, sort: 3, done: 4 }[ph];
     var frac = ph === 'guess' ? A.i / GUESS.length : ph === 'define' ? A.i / DEFINE.length : ph === 'sort' ? A.i / A.order.length : ph === 'look' ? 0 : 1;
-    $('a1steps').innerHTML = L.map(function (t, k) { return '<li class="' + (k < cur ? 'done' : k === cur ? 'on' : '') + '">' + t + '</li>'; }).join('');
+    $('a1steps').innerHTML = L.map(function (t, k) { return '<li role="button" tabindex="0" title="누르면 이 단계로 가요" data-k="' + k + '" class="' + (k < cur ? 'done' : k === cur ? 'on' : '') + '">' + t + '</li>'; }).join('');
     $('a1pbar').style.width = Math.round(Math.min(1, (Math.min(cur, 3) + frac) / 4) * 100) + '%';
   }
+  // 단계 표시를 눌러 원하는 단계로 바로 간다
+  function jump1(k) {
+    A.i = 0;
+    if (k === 0) A.phase = 'look';
+    else if (k === 1) A.phase = 'guess';
+    else if (k === 2) { A.phase = 'define'; A.unlocked = {}; }
+    else { A.phase = 'sort'; A.order = shuffle(SORT); A.score = 0; A.wrongs = []; A.res = []; A.unlocked = { poly: true, closed: true, solid: true }; }
+    show(); window.scrollTo(0, 0);
+  }
+  function stepKeys(el, fn) {
+    el.addEventListener('click', function (e) { var li = e.target.closest('li'); if (li) fn(Number(li.dataset.k)); });
+    el.addEventListener('keydown', function (e) { var li = e.target.closest('li'); if (li && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fn(Number(li.dataset.k)); } });
+  }
+  stepKeys($('a1steps'), jump1);
+  window.__stepKeys = stepKeys;
   function drawThumbs() {
     requestAnimationFrame(function () { var col = colors(); (A.res || []).forEach(function (r, k) { var c = $('a1r' + k); if (c && fit(c)) render(c, mesh(r.key), 0.6, 0.42, 0.42, 1.8, col); }); });
   }
@@ -1280,9 +1305,16 @@ button.pick.wrong { opacity: .45; }
     var L = ['자르기', '윗면 바꾸기', '네 칸 분류'], ph = B.phase;
     var cur = { cut: 0, slant: 0, slider: 1, sort: 2, done: 3 }[ph];
     var frac = ph === 'slant' ? 0.5 : ph === 'sort' ? B.i / B.order.length : ph === 'done' ? 1 : 0;
-    $('a2steps').innerHTML = L.map(function (t, k) { return '<li class="' + (k < cur ? 'done' : k === cur ? 'on' : '') + '">' + t + '</li>'; }).join('');
+    $('a2steps').innerHTML = L.map(function (t, k) { return '<li role="button" tabindex="0" title="누르면 이 단계로 가요" data-k="' + k + '" class="' + (k < cur ? 'done' : k === cur ? 'on' : '') + '">' + t + '</li>'; }).join('');
     $('a2pbar').style.width = Math.round(Math.min(1, (Math.min(cur, 2) + frac) / 3) * 100) + '%';
   }
+  function jump2(k) {
+    if (k === 0) B.phase = 'cut';
+    else if (k === 1) B.phase = 'slider';
+    else { B.phase = 'sort'; B.i = 0; B.order = shuffle(ITEMS); B.score = 0; B.wrongs = []; B.res = []; }
+    show(); window.scrollTo(0, 0);
+  }
+  window.__stepKeys($('a2steps'), jump2);
   function drawThumbs() {
     requestAnimationFrame(function () { var col = G.colors(); (B.res || []).forEach(function (r, k) { var c = $('a2r' + k); if (!r.M) r.M = r.it.make(); if (c && G.fit(c)) G.render(c, r.M, 0.6, 0.4, 0.42, 1.8, col); }); });
   }
