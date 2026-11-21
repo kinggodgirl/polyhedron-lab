@@ -226,6 +226,7 @@ button.pick.wrong { opacity: .45; }
 .rcell span { position: absolute; left: 0; right: 0; bottom: 3px; text-align: center; font-size: 13px; font-weight: 500; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rcell b { position: absolute; right: 7px; top: 2px; font-family: var(--display); font-size: 22px; }
 .rcell.ok b { color: var(--ok); } .rcell.no b { color: var(--bad); }
+#a1ball { position: absolute; right: 10px; top: 34px; z-index: 2; font-size: clamp(15px, 2vw, 20px); min-height: 44px; padding: 6px 14px; }
 @media (max-width: 600px) {
   #brand small { display: none; }
   .steps li:not(.on) { font-size: 0; padding: 3px; gap: 0; }
@@ -254,6 +255,7 @@ button.pick.wrong { opacity: .45; }
   <div id="a1stage" hidden>
     <canvas id="a1cv" role="img" aria-label="손가락으로 돌릴 수 있는 입체도형"></canvas>
     <div id="a1hint">손가락으로 밀면 도형이 돌아가요</div>
+    <button type="button" id="a1ball" hidden>공 넣어 보기 ⚽</button>
     <div id="a1stamp" hidden></div>
     <div id="a1name" hidden></div>
   </div>
@@ -619,7 +621,7 @@ button.pick.wrong { opacity: .45; }
       if (!o.noTop) { var top = []; for (i = 0; i < n; i++) top.push(n + i); F.push(top); }
       for (i = 0; i < n; i++) { j = (i + 1) % n; F.push([i, j, n + j, n + i]); }
     }
-    return { V: V, F: F, open: !!o.noTop };
+    return { V: V, F: F, open: !!o.noTop, box: !!o.noTop };
   }
   // 옆모습 [반지름, 높이]를 아래에서 위로 돌려 만든 회전체
   function lathe(prof, seg) {
@@ -747,12 +749,12 @@ button.pick.wrong { opacity: .45; }
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     order.forEach(function (o) {
       var i = o[1], f = M.F[i], n = NN[i], back = !front[i], sg = back ? -1 : 1;
-      var lam = Math.max(0, sg * (n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2])), k = (0.55 + 0.5 * lam) * (back ? 0.72 : 1);
+      var lam = Math.max(0, sg * (n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2])), k = (0.55 + 0.5 * lam) * (back ? (M.box ? 0.42 : 0.72) : 1);   // 상자의 안쪽 벽은 더 어둡게
       var fill = 'rgb(' + ((M.tint && M.tint[i]) ? col.alt : col.base).map(function (c) { return Math.min(255, Math.round(c * k)); }).join(',') + ')';
       ctx.beginPath(); f.forEach(function (v, j) { j ? ctx.lineTo(P[v].x, P[v].y) : ctx.moveTo(P[v].x, P[v].y); }); ctx.closePath();
       ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = fill; ctx.lineWidth = 1; ctx.stroke();   // 곡면 조각 사이 틈 메우기
       ctx.beginPath();
-      M.FE[i].forEach(function (ei) {
+      if (!(M.noEdge && M.noEdge[i])) M.FE[i].forEach(function (ei) {
         var e = M.E[ei];
         if (e.sharp || (!M.open && e.f.some(function (g) { return !front[g]; }))) { ctx.moveTo(P[e.a].x, P[e.a].y); ctx.lineTo(P[e.b].x, P[e.b].y); }
       });
@@ -768,8 +770,23 @@ button.pick.wrong { opacity: .45; }
       M.extra.forEach(function (s) { var a = scr(s[0]), b = scr(s[1]); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); });
       ctx.stroke(); ctx.setLineDash([]);
     }
+    if (M.box) {   // 뚫린 곳: 입구 테두리를 빨간 점선으로 강조
+      var sx = 0, top = 1e9, cnt = 0;
+      ctx.setLineDash([10, 7]); ctx.strokeStyle = col.bad; ctx.lineWidth = lw * 1.7; ctx.beginPath();
+      M.E.forEach(function (e) {
+        if (e.f.length > 1) return;
+        var a = scr(M.V[e.a]), b = scr(M.V[e.b]); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+        sx += a[0] + b[0]; cnt += 2; top = Math.min(top, a[1], b[1]);
+      });
+      ctx.stroke(); ctx.setLineDash([]);
+      if (cnt && lw >= 3) {
+        var fs = Math.max(16, Math.min(W, H) * 0.045), lx = sx / cnt, ly = Math.max(fs + 4, top - 14);
+        ctx.font = fs + 'px ' + css('--display'); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.lineWidth = 5; ctx.strokeStyle = col.panel; ctx.strokeText('뚫린 곳', lx, ly); ctx.fillStyle = col.bad; ctx.fillText('뚫린 곳', lx, ly);
+      }
+    }
   }
-  function colors() { return { base: css('--poly3d').split(',').map(Number), alt: css('--poly3d-alt').split(',').map(Number), glass: css('--edge'), fg: css('--fg') }; }
+  function colors() { return { base: css('--poly3d').split(',').map(Number), alt: css('--poly3d-alt').split(',').map(Number), glass: css('--edge'), fg: css('--fg'), bad: css('--bad'), panel: css('--panel') }; }
 
   // ---------- 활동 1 흐름 ----------
   var $ = function (id) { return document.getElementById(id); };
@@ -811,7 +828,9 @@ button.pick.wrong { opacity: .45; }
     });
   }
   function load(key) {
-    A.key = key; A.answered = false; A.yaw = 0.6; A.pitch = mesh(key).open ? 0.62 : 0.42; A.spin = true;
+    A.key = key; A.answered = false; A.yaw = 0.6; A.pitch = mesh(key).box ? 0.9 : mesh(key).open ? 0.62 : 0.42; A.spin = true;
+    A.ball = null; $('a1ball').hidden = !mesh(key).box; $('a1hint').hidden = !!mesh(key).box;   // 상자는 '뚫린 곳' 표시와 겹치지 않게 안내 문구를 숨긴다
+    $('a1ball').textContent = '공 넣어 보기 ⚽';
     $('a1stamp').hidden = true; $('a1name').hidden = true;
   }
   function say(t, cls, sub) {
@@ -941,7 +960,22 @@ button.pick.wrong { opacity: .45; }
 
   // 손가락으로 밀어 돌리기
   var stage = $('a1stage'), drag = null;
-  stage.addEventListener('pointerdown', function (e) { stage.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, yaw: A.yaw, pitch: A.pitch }; A.spin = false; });
+  stage.addEventListener('pointerdown', function (e) { if (e.target.closest('button')) return; stage.setPointerCapture(e.pointerId); drag = { x: e.clientX, y: e.clientY, yaw: A.yaw, pitch: A.pitch }; A.spin = false; });
+  $('a1ball').addEventListener('click', function () { A.ball = { t0: performance.now() }; this.textContent = '다시 넣기 ⚽'; });
+
+  // 공 떨어뜨리기: 위에서 떨어져 뚫린 곳으로 들어가 바닥에서 한 번 튀고 멈춘다
+  var BALL = (function () { var p = []; for (var k = 0; k <= 8; k++) { var t = -Math.PI / 2 + Math.PI * k / 8; p.push([Math.cos(t), Math.sin(t)]); } return lathe(p, 16); })();
+  function ballMesh() {
+    var base = mesh(A.key), lo = 1e9, hi = -1e9, cx = 0, cz = 0, n = base.V.length;
+    base.V.forEach(function (v) { lo = Math.min(lo, v[1]); hi = Math.max(hi, v[1]); cx += v[0] / n; cz += v[2] / n; });
+    var r = (hi - lo) * 0.26, yEnd = lo + r + 0.01, h = hi - yEnd + 0.6, tf = 0.55, g = 2 * h / (tf * tf), t = (performance.now() - A.ball.t0) / 1000, y;
+    if (t < tf) y = yEnd + h - 0.5 * g * t * t;
+    else { var v0 = g * tf * 0.35, u = t - tf; y = u < 2 * v0 / g ? yEnd + v0 * u - 0.5 * g * u * u : yEnd; }
+    var V = base.V.slice(), F = base.F.slice(), tint = base.F.map(function () { return false; }), noEdge = tint.slice(), off = V.length;
+    BALL.V.forEach(function (v) { V.push([cx + v[0] * r, y + v[1] * r, cz + v[2] * r]); });
+    BALL.F.forEach(function (f) { F.push(f.map(function (k) { return k + off; })); tint.push(true); noEdge.push(true); });
+    var M = finish({ V: V, F: F, open: true, box: true }); M.tint = tint; M.noEdge = noEdge; M.c = base.c; M.R = base.R; return M;
+  }
   stage.addEventListener('pointermove', function (e) {
     if (!drag) return;
     A.yaw = drag.yaw + (e.clientX - drag.x) * 0.01; A.pitch = Math.max(-1.45, Math.min(1.45, drag.pitch + (e.clientY - drag.y) * 0.01));
@@ -955,7 +989,7 @@ button.pick.wrong { opacity: .45; }
     if (!$('act1').hidden) {
       var col = colors();
       if (!$('a1board').hidden) tiles.forEach(function (tl) { tl.yaw += dt * 0.0007; if (fit(tl.cv)) render(tl.cv, mesh(tl.key), tl.yaw, tl.pitch, 0.43, 2, col); });
-      if (!$('a1stage').hidden && A.key) { if (A.spin) A.yaw += dt * 0.0005; var cv = $('a1cv'); if (fit(cv)) render(cv, mesh(A.key), A.yaw, A.pitch, 0.45, 3, col); }
+      if (!$('a1stage').hidden && A.key) { if (A.spin) A.yaw += dt * 0.0005; var cv = $('a1cv'); if (fit(cv)) render(cv, A.ball ? ballMesh() : mesh(A.key), A.yaw, A.pitch, 0.45, 3, col); }
     }
     requestAnimationFrame(loop);
   }
